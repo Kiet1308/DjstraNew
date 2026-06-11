@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# ảnh chụp nghiệm thu — sinh lại được bằng tools/shoot-*.mjs
+tools/shots/
+# cấu hình cục bộ
+.claude/
+*.local

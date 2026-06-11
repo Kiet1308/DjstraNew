@@ -1,0 +1,47 @@
+/* ============================================================
+   Bản đồ đêm trong sương — night cartography theme
+   Mặt phẳng thiết kế cố định 1920×1080, scale bằng transform.
+   ============================================================ */
+:root {
+  /* Mực đêm — các lớp nền */
+  --ink-0: #070d18;
+  --ink-1: #0b1220;
+  --ink-2: #101a2e;
+  --ink-3: #17233c;
+  --line-soft: #1e2b47;
+  --line: #2a3a5c;
+
+  /* Sương xanh xám — thang chữ */
+  --fog-100: #eaf0fd;
+  --fog-200: #c3cfe8;
+  --fog-300: #93a3c4;
+  --fog-400: #5e6f93;
+  --fog-500: #3c4b6c;
+
+  /* Ngữ nghĩa trạng thái */
+  --cyan: #4fd8eb;        /* đang mở */
+  --cyan-soft: #2aa7bd;
+  --cyan-dim: #1a5d6e;
+  --amber: #ffc94d;       /* đã chốt */
+  --amber-deep: #d99a1f;
+  --red: #ff7a6e;         /* chưa chắc / cắt nhánh */
+  --red-dim: #93423b;
+  --green: #7ee8a2;       /* cost giảm — flash cải thiện */
+  --violet: #b48cff;      /* mũi tên phụ thuộc — khác hẳn màu cạnh */
+  --path-a: #7af2ff;      /* gradient đường đi cuối */
+  --path-b: #ffd76e;
+
+  /* Chữ */
+  --font-body: 'Be Vietnam Pro', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Cỡ chữ tối thiểu cho livestream 1920×1080 */
+  --fs-body: 22px;
+  --fs-code: 23px;
+  --fs-badge: 19px;
+  --fs-callout: 30px;
+  --fs-title: 88px;
+
+  --shadow-panel: 0 18px 50px rgba(2, 6, 14, 0.55);
+  --radius-panel: 18px;
+}
