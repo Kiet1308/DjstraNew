@@ -5,7 +5,6 @@ import type { SlideDef, SlideProps } from '../../deck/types'
 import { cityGraph } from '../../graph/data'
 import { GraphView } from '../../graph/GraphView'
 import {
-  sceneBase,
   type EdgeVisualState,
   type GhostEdge,
   type GraphSceneState,
@@ -13,12 +12,17 @@ import {
   type NodeVisualState,
 } from '../../graph/types'
 import { Callout } from '../../components/Callout'
-import { CalloutSlot, Em, mergeScene, type CalloutDef, type ScenePatch } from './common'
+import { CalloutSlot, Em, mapScene, mergeScene, type CalloutDef, type ScenePatch } from './common'
 import { cutScene, finalScene } from './scenes'
 
 /* ============ Tiến trình khám phá (đã verify chạy tay) ============
    chốt C=4 → G=6 → E=10 → D=14 → B=16; relax D: 18→16→14;
-   khi chốt D: 14+6=20 > 16 → B giữ nguyên; đường cuối A→C→E→B=16. */
+   khi chốt D: 14+6=20 > 16 → B giữ nguyên; đường cuối A→C→E→B=16.
+
+   Kịch bản sư phạm: 2 lần chốt đầu (C, G) làm BẰNG TAY — không badge.
+   Badge cost ra đời ở beat "ghi ra cho đỡ phải nhớ" (sau khi mở từ G,
+   7 điểm + D đã đổi giá khiến trí nhớ quá tải). Quy luật "rẻ nhất là
+   chốt được" KHÔNG được tuyên bố — nó vỡ ra sau 3 lần thử-phá tại gate. */
 
 // suy từ dữ liệu thật — không chép tay, typo id sẽ không lọt được
 const ALL_EDGES = cityGraph.edges.map((e) => e.id)
@@ -53,9 +57,8 @@ const K_C = [...K_A, 'CD', 'CE']
 const K_G = [...K_C, 'GF', 'GH']
 const K_E = [...K_G, 'EB', 'ED']
 
-const COSTS_SHOW = { A: 0, C: 4, G: 6, D: 18 }
-const COSTS_C = { A: 0, C: 4, G: 6, D: 16, E: 10 }
-const COSTS_G = { ...COSTS_C, F: 18, H: 20 }
+// badge chỉ tồn tại TỪ beat show-cost trở đi
+const COSTS_G = { A: 0, C: 4, G: 6, E: 10, D: 16, F: 18, H: 20 }
 const COSTS_E = { ...COSTS_G, D: 14, B: 16 }
 
 type GateDef = {
@@ -69,14 +72,19 @@ type GateDef = {
 type Beat = {
   scene: GraphSceneState
   callout?: CalloutDef
+  /** thu hẹp callout (beat có hành động quanh C ở góc trên-trái — không che node) */
+  calloutW?: number
   gate?: GateDef
-  strip?: boolean
+  /** dải chip thứ tự chốt — nội dung tùy beat */
+  strip?: string[]
+  /** beat đường cuối sáng dậy ngược về A */
+  finalReveal?: boolean
 }
 
 const BEATS = defineBeats<Beat>([
   // b0 — Lý do bịt mắt: fog là công cụ tư duy
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_START },
       nodeStates: { A: 'current' },
       edgeStates: es([]),
@@ -94,7 +102,7 @@ const BEATS = defineBeats<Beat>([
   },
   // b1 — Luật chơi: "chắc chắn" nghĩa là gì, và vì sao khó tính vậy
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_START },
       nodeStates: { A: 'current' },
       edgeStates: es([]),
@@ -114,7 +122,7 @@ const BEATS = defineBeats<Beat>([
   },
   // b2 — Mở mắt tại A: thấy 3 đoạn nối
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_A },
       nodeStates: ns([], ['C', 'G', 'D'], { A: 'current' }),
       edgeStates: es(K_A),
@@ -132,7 +140,7 @@ const BEATS = defineBeats<Beat>([
   },
   // b3 — GATE 1
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_A },
       nodeStates: ns([], ['C', 'G', 'D'], { A: 'current' }),
       edgeStates: es(K_A),
@@ -185,7 +193,7 @@ const BEATS = defineBeats<Beat>([
   },
   // b4 — Đặt tên CHỐT (A và C cùng nhận dấu, đúng lúc cái tên ra đời)
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_A },
       nodeStates: ns(['A', 'C'], ['G', 'D']),
       edgeStates: es(K_A),
@@ -201,64 +209,47 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // b5 — Show-cost: bắc cầu chi phí → cost
+  // b5 — Mở từ C + đặt tên MỞ + relax D — BẰNG MIỆNG, chưa có giấy bút
   {
-    scene: sceneBase({
-      fog: { revealed: R_A },
-      nodeStates: ns(['A', 'C'], ['G', 'D']),
-      edgeStates: es(K_A),
-      weights: true,
-      costs: COSTS_SHOW,
-    }),
-    callout: {
-      tone: 'need',
-      text: (
-        <>
-          Đầu óc bắt đầu phải nhớ nhiều rồi — đánh dấu vào góc mỗi điểm{' '}
-          <Em>chi phí tốt nhất ĐÃ BIẾT</Em> tính đến giờ. Dân code lười viết dài, gọi tắt là{' '}
-          <Em>cost</Em> — lát viết code cũng dùng tên này.
-        </>
-      ),
-    },
-  },
-  // b6 — Mở từ C + đặt tên MỞ + relax D lần 1
-  {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_C },
       nodeStates: ns(['A', 'C'], ['G', 'D', 'E']),
       edgeStates: es(K_C, { AC: 'relaxing', CD: 'relaxing', CE: 'active' }),
       weights: true,
-      costs: COSTS_C,
       mathOverlays: [
-        { at: 'E', text: '4+6=10', tone: 'info', dx: -130, dy: -110 },
+        // chip nằm BÊN PHẢI E — góc trên-trái là đất của callout dài
+        { at: 'E', text: '4+6=10', tone: 'info', dx: 120, dy: -64 },
         { at: 'D', text: '4+12=16 < 18', tone: 'better', dx: -240, dy: 40 },
       ],
     }),
+    calloutW: 520,
     callout: {
       tone: 'insight',
       text: (
         <>
-          Chốt C rồi thì từ C nhìn tiếp: thấy điểm mới <Em>E</Em> — ghi tạm cost tốt nhất đã
-          biết (4+6=10): gọi là <Em>ĐANG MỞ</Em>. Và kìa — có đường C–D thật: 4+12=16 &lt; 18.{' '}
-          <Em>Nghi ngờ lúc nãy là SỰ THẬT</Em> — đến D qua C ngắn hơn!
+          Chốt C rồi thì từ C nhìn tiếp: thấy điểm mới <Em>E</Em> — đường tốt nhất đã biết đến
+          nó: 4+6=<Em>10</Em>. Điểm thấy rồi mà chưa chắc, gọi là <Em>ĐANG MỞ</Em>. Và kìa — có
+          đường C–D thật: 4+12=16 &lt; 18. <Em>Nghi ngờ lúc nãy là SỰ THẬT!</Em> Chưa có giấy
+          bút — cả nhà <Em>nhớ giùm</Em>: E mười, D mười sáu.
         </>
       ),
     },
   },
-  // b7 — GATE 2
+  // b6 — GATE 2: thử phá TỪNG ứng viên — kể cả kẻ sẽ thắng
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_C },
       nodeStates: ns(['A', 'C'], ['G', 'D', 'E']),
       edgeStates: es(K_C),
       weights: true,
-      costs: COSTS_C,
     }),
     callout: {
       tone: 'need',
       text: (
         <>
-          Ba điểm đang mở: G=6, E=10, D=16. Chắc chắn <Em>tiếp</Em> được điểm nào? Click thử.
+          Ba điểm đang mở. Nhẩm lại nào: G… <Em>6</Em>, E… <Em>10</Em>, D… <Em>16</Em>{' '}
+          <Em color="var(--cyan)">(vừa đổi từ 18 đấy)</Em>. Chắc chắn <Em>tiếp</Em> được điểm
+          nào? Thử phá từng ứng viên như màn trước — click thử.
         </>
       ),
     },
@@ -288,15 +279,16 @@ const BEATS = defineBeats<Beat>([
         tone: 'insight',
         text: (
           <>
-            <Em>G</Em>, cost 6 — nhỏ nhất trong các điểm đang mở. Nhưng lần này đừng tin ngay —
-            thử <Em>phá</Em> nó xem có đứng vững không →
+            Còn lại <Em>G=6</Em>. Nhưng công bằng thì G cũng phải bị <Em>thử phá</Em> như hai
+            bạn kia: biết đâu trong sương có đường nào đó đến G rẻ hơn 6? Cho nó một cơ hội →
           </>
         ),
       },
-      patch: { nodeStates: { G: 'locked' } },
+      // G đang BỊ XÉT — chưa được khóa; nó chỉ ✓ sau khi sống sót đòn phá ở beat sau
+      patch: { nodeStates: { G: 'current' } },
     },
   },
-  // b8 — Cut property: đường lẻn phải CHUI QUA CỬA rồi mới vào được vùng tối
+  // b7 — Đường lẻn THỬ PHÁ G → phá hụt → chốt (cut property nằm TRONG suy luận chọn)
   {
     scene: cutScene,
     callout: {
@@ -306,20 +298,19 @@ const BEATS = defineBeats<Beat>([
           Cho một đường <Em color="var(--red)">"lẻn"</Em> từ A đến G xem. Muốn lang thang trong
           vùng tối thì trước hết phải <Em>chui được vào</Em> — mà vùng tối{' '}
           <Em>không có cửa sau</Em>: lối vào duy nhất là bước qua một điểm sáng đang mở (E=10
-          hoặc D=16). Mới đặt chân đến cửa đã tốn ≥ 10 &gt; 6 rồi, đi tiếp chỉ dài thêm — nên
-          G=6 <Em>không thể bị soán ngôi</Em>.
+          hoặc D=16). Mới đặt chân đến cửa đã tốn ≥ 10 &gt; 6 rồi, đi tiếp chỉ dài thêm.{' '}
+          <Em>Không phá nổi → chốt G ✓.</Em>
         </>
       ),
     },
   },
-  // b9 — Mở từ G
+  // b8 — Mở từ G
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_G },
       nodeStates: ns(['A', 'C', 'G'], ['D', 'E', 'F', 'H']),
       edgeStates: es(K_G, { GF: 'active', GH: 'active' }),
       weights: true,
-      costs: COSTS_G,
       mathOverlays: [
         { at: 'F', text: '6+12=18', tone: 'info', dx: -110 },
         { at: 'H', text: '6+14=20', tone: 'info', dx: -120 },
@@ -329,15 +320,63 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Mở từ G: thấy thêm <Em>F</Em> (6+12=18) và <Em>H</Em> (6+14=20). Sương lùi dần —
-          nhưng B vẫn bặt tăm.
+          G nhận dấu ✓, từ G nhìn tiếp: thấy thêm <Em>F</Em> (6+12=18) và <Em>H</Em> (6+14=20).
+          Sương lùi dần — nhưng B vẫn bặt tăm.
         </>
       ),
     },
   },
-  // b10 — GATE 3
+  // b9 — TRÍ NHỚ QUÁ TẢI (nhu cầu ghi chú xuất hiện THẬT)
   {
-    scene: sceneBase({
+    scene: mapScene({
+      fog: { revealed: R_G },
+      nodeStates: ns(['A', 'C', 'G'], ['D', 'E', 'F', 'H']),
+      edgeStates: es(K_G),
+      weights: true,
+      mathOverlays: [
+        { at: 'D', text: '18 hay 16?', tone: 'worse', dx: -10, dy: -110 },
+        // chip nằm BÊN PHẢI E — né callout dài góc trên-trái
+        { at: 'E', text: '10… nhỉ?', tone: 'worse', dx: 130, dy: -60 },
+        { at: 'F', text: '?', tone: 'worse', dx: -90, dy: -60 },
+        { at: 'H', text: '?', tone: 'worse', dx: 60, dy: -100 },
+      ],
+    }),
+    calloutW: 520,
+    callout: {
+      tone: 'need',
+      text: (
+        <>
+          Kiểm tra trí nhớ cái nào: <Em>D đang là bao nhiêu — 18 hay 16?</Em> E? F? H?… Mới bảy
+          điểm mà đầu đã muốn rối. Người quên thì cộng lại được — nhưng muốn thành{' '}
+          <Em>QUY TẮC cho máy làm theo</Em> thì không được phép "nhớ mang máng". Phải{' '}
+          <Em>ghi ra</Em> thôi.
+        </>
+      ),
+    },
+  },
+  // b10 — SHOW-COST: ghi ra cho đỡ phải nhớ → đặt tên cost
+  {
+    scene: mapScene({
+      fog: { revealed: R_G },
+      nodeStates: ns(['A', 'C', 'G'], ['D', 'E', 'F', 'H']),
+      edgeStates: es(K_G),
+      weights: true,
+      costs: COSTS_G,
+    }),
+    callout: {
+      tone: 'insight',
+      text: (
+        <>
+          Ghi vào góc mỗi điểm con số <Em>tốt nhất ĐÃ BIẾT</Em> — <Em>cho đỡ phải nhớ</Em>.
+          Điểm đã chốt thì số ấy là vĩnh viễn; điểm đang mở thì mới là "tạm thời tốt nhất". Dân
+          code lười viết dài, gọi tắt là <Em>cost</Em> — lát viết code cũng dùng đúng tên này.
+        </>
+      ),
+    },
+  },
+  // b11 — GATE 3: lần đầu được ghi chú phục vụ
+  {
+    scene: mapScene({
       fog: { revealed: R_G },
       nodeStates: ns(['A', 'C', 'G'], ['D', 'E', 'F', 'H']),
       edgeStates: es(K_G),
@@ -348,7 +387,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Bốn điểm đang mở: E=10, D=16, F=18, H=20. Chắc chắn tiếp điểm nào? Click thử.
+          Bốn điểm đang mở: E=10, D=16, F=18, H=20 — <Em>lần đầu con số nằm sẵn trên bản đồ</Em>
+          . Chắc chắn tiếp điểm nào? Click thử.
         </>
       ),
     },
@@ -386,17 +426,42 @@ const BEATS = defineBeats<Beat>([
         tone: 'insight',
         text: (
           <>
-            <Em>E</Em> — cost 10, nhỏ nhất trong 4. Lập luận y màn trước: mọi ngả khác đều phải
-            chui qua một cửa <Em>đắt hơn 10</Em>.
+            <Em>E</Em> — thử phá nốt: mọi ngả khác đến E đều phải bước qua một cửa đang mở còn
+            lại: D=16, F=18, H=20. Cửa nào cũng đắt hơn 10 sẵn rồi, đi tiếp chỉ dài thêm —{' '}
+            <Em>không phá nổi. Chốt E ✓.</Em> (Để ý: cả 3 nghi ngờ vừa nãy đều phải mượn đường
+            qua E — chính kẻ rẻ nhất.)
           </>
         ),
       },
       patch: { nodeStates: { E: 'locked' } },
     },
   },
-  // b11 — Mở từ E: THẤY ĐÍCH + relax D lần 2
+  // b12 — VỠ RA QUY LUẬT — ngay tại trận, không đợi slide sau
   {
-    scene: sceneBase({
+    scene: mapScene({
+      fog: { revealed: R_G },
+      nodeStates: ns(['A', 'C', 'G', 'E'], ['D', 'F', 'H']),
+      edgeStates: es(K_G),
+      weights: true,
+      costs: COSTS_G,
+    }),
+    strip: ['C=4', 'G=6', 'E=10'],
+    callout: {
+      tone: 'insight',
+      text: (
+        <>
+          Khoan… để ý không? Ba lần thử phá — kẻ sống sót <Em>lần nào cũng là điểm đang mở RẺ
+          NHẤT</Em>. Lý do lần nào cũng đúng một câu: mọi ngả khác phải bước qua một cửa{' '}
+          <Em>đắt hơn nó</Em>, rồi đi tiếp chỉ dài thêm. Rẻ nhất thì không ai phá nổi. Vậy từ
+          giờ <Em>khỏi thử từng ứng viên</Em> — cứ điểm đang mở rẻ nhất là{' '}
+          <Em>CHỐT thẳng tay</Em>.
+        </>
+      ),
+    },
+  },
+  // b13 — Mở từ E: THẤY ĐÍCH + relax D lần 2 (badge D tự sửa 16→14 — phần thưởng của việc ghi)
+  {
+    scene: mapScene({
       fog: { revealed: R_E },
       nodeStates: ns(['A', 'C', 'G', 'E'], ['D', 'F', 'H', 'B']),
       edgeStates: es(K_E, { AC: 'relaxing', CE: 'relaxing', ED: 'relaxing', EB: 'active' }),
@@ -411,15 +476,16 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Mở từ E: <Em>THẤY ĐÍCH B!</Em> 10+6=16. Và đường E–D <Em>có thật</Em>: 10+4=14 &lt;
-          16 — D rẻ thêm lần nữa, đúng như đã nghi ngờ ở hai màn trước.
+          Mở từ E: <Em>THẤY ĐÍCH B!</Em> 10+6=16. Và đường E–D <Em>có thật</Em>: 10+4=14 —
+          nghi ngờ từ hai màn trước thành sự thật nốt. Nhìn góc điểm D kìa: con số{' '}
+          <Em color="var(--green)">tự sửa 16 → 14</Em> — may mà đã ghi ra, khỏi ai phải nhớ.
         </>
       ),
     },
   },
-  // b12 — Thấy đích mà CHƯA ĐƯỢC DỪNG
+  // b14 — Thấy đích mà CHƯA ĐƯỢC DỪNG — suy thẳng từ luật vừa đúc
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_E },
       nodeStates: ns(['A', 'C', 'G', 'E'], ['D', 'F', 'H'], { B: 'current' }),
       edgeStates: es(K_E),
@@ -430,16 +496,17 @@ const BEATS = defineBeats<Beat>([
       tone: 'warn',
       text: (
         <>
-          Khoan — thấy đích rồi! B=16. Dừng được chưa? <Em color="var(--red)">…Chưa.</Em> 16
-          mới là "tốt nhất ĐÃ BIẾT". D=14 còn đang mở kia — biết đâu vòng qua D lại rẻ hơn?
-          Luật của ta: <Em>chỉ tin con số khi đã CHỐT</Em>.
+          Khoan — thấy đích rồi! B=16. Dừng được chưa? <Em color="var(--red)">…Chưa.</Em> Hỏi
+          luật vừa đúc: điểm đang mở rẻ nhất là <Em>D=14</Em>, đâu phải B. Nghĩa là chính B còn
+          có thể bị phá — biết đâu vòng qua D lại rẻ hơn? 16 mới là "tốt nhất ĐÃ BIẾT" —{' '}
+          <Em>chỉ tin con số khi đã CHỐT</Em>.
         </>
       ),
     },
   },
-  // b13 — Chốt D: kiểm tra B, nhánh KHÔNG đổi cũng phải hiện phép tính
+  // b15 — Áp luật: chốt D, kiểm tra B — nhánh KHÔNG đổi cũng phải hiện phép tính
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: R_E },
       nodeStates: ns(['A', 'C', 'G', 'E', 'D'], ['F', 'H', 'B']),
       edgeStates: es([...K_E, 'DB'], { DB: 'active' }),
@@ -451,29 +518,31 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          D=14 nhỏ nhất → chốt D. Kiểm tra ngả từ D sang B: 14+6=20 &gt; 16 →{' '}
-          <Em>B giữ nguyên</Em>. Vòng qua D không rẻ hơn.
+          Áp luật — khỏi đắn đo: D=14 rẻ nhất → <Em>CHỐT D</Em>. Kiểm tra ngả từ D sang B:
+          14+6=20 &gt; 16 → <Em>B giữ nguyên</Em>. Vòng qua D không rẻ hơn — nghi ngờ cuối cùng
+          tắt.
         </>
       ),
     },
   },
-  // b14 — Chốt B = đích → GIỜ mới dừng; đường sáng dậy NGƯỢC từ B về A
+  // b16 — Chốt B = đích → GIỜ mới dừng; đường sáng dậy NGƯỢC từ B về A
   {
     scene: finalScene,
+    finalReveal: true,
     callout: {
       tone: 'insight',
       text: (
         <>
-          B=16 giờ là nhỏ nhất trong các điểm đang mở → <Em>CHỐT B</Em>. B là đích — GIỜ mới
-          được dừng. Đường ngắn nhất: <Em>A → C → E → B = 16</Em>.
+          Rẻ nhất bây giờ là chính <Em>B=16</Em> → <Em>CHỐT B</Em>. B là đích — GIỜ mới được
+          dừng. Đường ngắn nhất: <Em>A → C → E → B = 16</Em>.
         </>
       ),
     },
   },
-  // b15 — Beat nghỉ: toàn cảnh
+  // b17 — Beat nghỉ: toàn cảnh
   {
     scene: finalScene,
-    strip: true,
+    strip: ['C=4', 'G=6', 'E=10', 'D=14', 'B=16'],
   },
 ])
 
@@ -483,7 +552,7 @@ const GATE_BEATS = BEATS.table
 
 // đường cuối sáng dậy NGƯỢC từ đích: EB trước, rồi CE, rồi AC
 const FINAL_EDGE_DELAYS = { EB: 0, CE: 0.4, AC: 0.8 }
-const FINAL_BEAT = 14
+const FINAL_BEAT = BEATS.table.findIndex((b) => b.finalReveal)
 
 function S3FogWalkSlide({ beat, direction, gateResolved, resolveGate, nudge }: SlideProps) {
   const def = BEATS.at(beat)
@@ -530,7 +599,11 @@ function S3FogWalkSlide({ beat, direction, gateResolved, resolveGate, nudge }: S
         hintNodes={interactive && gate && nudge > 0 ? gate.candidates : []}
         edgeDelays={beat === FINAL_BEAT && direction === 1 ? FINAL_EDGE_DELAYS : undefined}
       />
-      <CalloutSlot callout={callout} beatKey={`${beat}-${gateResolved ? 'ok' : 'q'}`} />
+      <CalloutSlot
+        callout={callout}
+        beatKey={`${beat}-${gateResolved ? 'ok' : 'q'}`}
+        w={def.calloutW ?? 900}
+      />
 
       {/* Overlay phản ví dụ "chưa chắc được" — chỉ để đọc, KHÔNG nhận chuột
           (kẻo nuốt cú click vào H nằm thấp dưới đáy đồ thị) */}
@@ -555,10 +628,12 @@ function S3FogWalkSlide({ beat, direction, gateResolved, resolveGate, nudge }: S
         </AnimatePresence>
       </div>
 
-      {/* Beat nghỉ: dải tổng kết thứ tự chốt */}
+      {/* Dải chip thứ tự chốt — beat "vỡ ra quy luật" (canh phải, né callout)
+          và beat nghỉ cuối (canh giữa) */}
       <AnimatePresence>
         {def.strip && (
           <motion.div
+            key={def.strip.join('|')}
             initial={{ opacity: 0, y: 26 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
@@ -567,15 +642,15 @@ function S3FogWalkSlide({ beat, direction, gateResolved, resolveGate, nudge }: S
               position: 'absolute',
               top: 70,
               left: 0,
-              right: 0,
+              right: def.callout ? 80 : 0,
               display: 'flex',
-              justifyContent: 'center',
+              justifyContent: def.callout ? 'flex-end' : 'center',
               gap: 18,
               zIndex: 15,
               fontSize: 26,
             }}
           >
-            {['C=4', 'G=6', 'E=10', 'D=14', 'B=16'].map((t, i) => (
+            {def.strip.map((t, i) => (
               <motion.span
                 key={t}
                 initial={{ opacity: 0, scale: 0.7 }}
@@ -618,7 +693,6 @@ export const S3FogWalk: SlideDef = {
   section: 3,
   beats: BEATS.count,
   gateBeats: GATE_BEATS,
-  // các gate đều SAU beat morph nên được phép dùng "đỉnh/đồ thị"
-  gateHint: 'click đỉnh trên đồ thị',
+  gateHint: 'click điểm trên bản đồ',
   component: S3FogWalkSlide,
 }

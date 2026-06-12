@@ -47,8 +47,20 @@ export type DepArrowDef = {
   to: NodeId
   /** mờ đi (giữ mạng nhện cũ làm nền khi hội tụ về A) */
   dim?: boolean
+  /** tầng đã hỏi xong — còn đọc được nhưng nhường sân khấu (0.45) */
+  soft?: boolean
+  /** stagger trong-beat (giây) — slide tự ép 0 khi đi lùi */
+  delay?: number
   /** lật phía cong (vẽ 2 mũi tên ngược chiều cùng cặp đỉnh không đè nhau) */
   flip?: boolean
+}
+
+/** Mũi tên "tôi đến từ đây" (S4Prev): cắm ở node, chỉ về điểm ngay trước. */
+export type PrevArrowDef = {
+  node: NodeId
+  from: NodeId
+  /** đang được hỏi trong màn truy ngược — sáng + dày hơn */
+  flare?: boolean
 }
 
 export type MathOverlayDef = {
@@ -71,6 +83,10 @@ export type GraphSceneState = {
   fog?: { revealed: NodeId[] }
   ghostEdges?: GhostEdge[]
   depArrows?: { arrows: DepArrowDef[]; reversed?: boolean }
+  /** Cây mũi tên "tôi đến từ đây" — Phần 4 (Prev). */
+  prevArrows?: PrevArrowDef[]
+  /** Flash badge cost theo KỊCH BẢN (rewind-an-toàn): worse = ghi đè xấu (đỏ). */
+  costFlash?: Record<NodeId, 'worse' | 'better'>
   /** Đường giả định "lẻn qua vùng tối" (cut property). */
   phantom?: { points: [number, number][]; crossAt?: [number, number]; label?: string }
   mathOverlays?: MathOverlayDef[]

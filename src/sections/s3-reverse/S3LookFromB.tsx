@@ -5,8 +5,8 @@ import { cityGraph } from '../../graph/data'
 import { mapLayout } from '../../graph/layouts'
 import { GraphView } from '../../graph/GraphView'
 import { CityDecorLayer } from '../../graph/mapDecor'
-import { sceneBase, type GraphSceneState } from '../../graph/types'
-import { CalloutSlot, Em, type CalloutDef } from './common'
+import type { GraphSceneState } from '../../graph/types'
+import { CalloutSlot, Em, mapScene, type CalloutDef } from './common'
 
 type Beat = {
   scene: GraphSceneState
@@ -22,11 +22,11 @@ const silhouette = {
   H: 'fogged',
 } as const
 
+// Phần 3 giữ nguyên BẢN ĐỒ — không morph. Đặt tên đồ thị/đỉnh/cạnh dời sang đầu Phần 4.
 const BEATS = defineBeats<Beat>([
-  // 1. Động cơ nhìn ngược — chưa morph, vẫn là bản đồ
+  // 1. Động cơ nhìn ngược
   {
-    scene: sceneBase({
-      variant: 'map',
+    scene: mapScene({
       edgeStates: { DB: 'active', EB: 'active', FB: 'active' },
       nodeStates: { B: 'current' },
     }),
@@ -42,25 +42,9 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // 2. Morph map → abstract + đặt tên ĐỒ THỊ / ĐỈNH / CẠNH
+  // 2. Câu hỏi vật lý thay tuyên bố
   {
-    scene: sceneBase({ variant: 'abstract' }),
-    callout: {
-      tone: 'insight',
-      text: (
-        <>
-          Phố xá, tên đường — toàn thứ làm rối mắt mà <Em>không đổi được đáp án</Em>. Bỏ hết,
-          chỉ giữ các điểm và đoạn nối. Hình tối giản này dân lập trình gọi là <Em>ĐỒ THỊ</Em>{' '}
-          — mỗi điểm là một <Em>ĐỈNH</Em>, mỗi đoạn nối là một <Em>CẠNH</Em>. Tên gọi thôi —
-          nó vẫn là bản đồ của ta.
-        </>
-      ),
-    },
-  },
-  // 3. Câu hỏi vật lý thay tuyên bố
-  {
-    scene: sceneBase({
-      variant: 'abstract',
+    scene: mapScene({
       nodeStates: { ...silhouette, B: 'current' },
       edgeStates: {
         DB: 'active',
@@ -85,10 +69,9 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // 4. Khán giả trả lời → 3 cửa
+  // 3. Khán giả trả lời → 3 cửa
   {
-    scene: sceneBase({
-      variant: 'abstract',
+    scene: mapScene({
       nodeStates: { ...silhouette, B: 'current', D: 'frontier', E: 'frontier', F: 'frontier' },
       edgeStates: {
         DB: 'active',
@@ -114,10 +97,9 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // 5. Ba kịch bản hoặc / hoặc / hoặc
+  // 4. Ba kịch bản hoặc / hoặc / hoặc
   {
-    scene: sceneBase({
-      variant: 'abstract',
+    scene: mapScene({
       nodeStates: { ...silhouette, B: 'current', D: 'frontier', E: 'frontier', F: 'frontier' },
       edgeStates: {
         DB: 'active',
@@ -145,10 +127,9 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // 6. Bài toán mới
+  // 5. Bài toán mới
   {
-    scene: sceneBase({
-      variant: 'abstract',
+    scene: mapScene({
       nodeStates: {
         ...silhouette,
         B: 'dimmed',
@@ -194,8 +175,8 @@ function S3LookFromBSlide({ beat, direction }: SlideProps) {
   const dly = (d: number) => (direction === 1 ? d : 0)
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      {/* phố xá chỉ còn ở beat 0 — morph sang đồ thị thì "bỏ phố xá đi" theo nghĩa đen */}
-      <CityDecorLayer layout={mapLayout} edges={cityGraph.edges} opacity={beat === 0 ? 1 : 0} />
+      {/* phố xá dim dần ở các beat silhouette để 3 cửa vào B nổi lên */}
+      <CityDecorLayer layout={mapLayout} edges={cityGraph.edges} opacity={beat === 0 ? 1 : 0.3} />
       <GraphView graph={cityGraph} scene={def.scene} chaosFrom={def.chaos ? 'A' : undefined} />
       <CalloutSlot callout={def.callout} beatKey={beat} />
 

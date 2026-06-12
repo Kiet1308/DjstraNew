@@ -4,8 +4,8 @@ import type { SlideDef, SlideProps } from '../../deck/types'
 import { FogAtmosphere } from '../../graph/FogLayer'
 import { KeyHint } from '../../components/KeyHint'
 
-/** Sửa tên người trình bày tại đây. */
-const PRESENTER = 'Trịnh Kiệt Vương'
+/** Tên nhóm trình bày. */
+const PRESENTER = 'Nhóm 2'
 
 const BEATS = defineBeats([{}])
 
@@ -72,7 +72,7 @@ function S1TitleSlide(_props: SlideProps) {
             color: 'var(--cyan)',
           }}
         >
-          Một bài toán · một làn sương · một cách nghĩ
+          Một tấm bản đồ · một điểm đi · một điểm đến
         </motion.div>
 
         <motion.h1
@@ -99,8 +99,8 @@ function S1TitleSlide(_props: SlideProps) {
           transition={{ duration: 0.8, delay: 0.7 }}
           style={{ fontSize: 34, color: 'var(--fog-200)', margin: 0, fontWeight: 400 }}
         >
-          — thử <strong style={{ color: 'var(--amber)', fontWeight: 800 }}>tự mình nghĩ ra</strong>{' '}
-          cách giải —
+          — từ <strong style={{ color: 'var(--amber)', fontWeight: 800 }}>A</strong> đến{' '}
+          <strong style={{ color: 'var(--amber)', fontWeight: 800 }}>B</strong> —
         </motion.p>
 
         <motion.p

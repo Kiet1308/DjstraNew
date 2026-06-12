@@ -19,6 +19,62 @@ const POOL_COLORS = [
 export const allBigPaths = enumeratePaths(bigGraph, 'S', 'T')
 export const BIG_TOTAL = allBigPaths.length
 
+/** Nền đồ thị 12 ngã tư — dùng chung cho ExplosionScene và SnipScene. */
+export function BigGraphBase() {
+  return (
+    <>
+      <g>
+        {bigGraph.edges.map((e) => {
+          const a = bigLayout[e.from]
+          const b = bigLayout[e.to]
+          return (
+            <line
+              key={e.id}
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              stroke="var(--line-soft)"
+              strokeWidth={2.5}
+            />
+          )
+        })}
+      </g>
+      <g>
+        {bigGraph.nodes.map((n) => {
+          const p = bigLayout[n.id]
+          const isEnd = n.id === 'S' || n.id === 'T'
+          return (
+            <g key={n.id}>
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={isEnd ? 30 : 17}
+                fill={isEnd ? '#0f2733' : 'var(--ink-3)'}
+                stroke={isEnd ? 'var(--cyan)' : 'var(--line)'}
+                strokeWidth={isEnd ? 3 : 2}
+              />
+              {isEnd && (
+                <text
+                  x={p.x}
+                  y={p.y + 2}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={26}
+                  fontWeight={800}
+                  fill="var(--fog-100)"
+                >
+                  {n.id === 'S' ? 'A' : 'B'}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </g>
+    </>
+  )
+}
+
 /**
  * Cảnh bùng nổ tổ hợp: pool 8 path tái sử dụng + counter tăng tốc
  * (1 đường/s → hàng chục mỗi frame). MỘT vòng rAF, không setState —
@@ -130,7 +186,7 @@ export function ExplosionScene({
         viewBox="0 0 1920 1080"
         style={{ position: 'absolute', inset: 0 }}
       >
-        {/* nền đồ thị 12 ngã tư */}
+        {/* nền đồ thị 12 ngã tư — pool đường chạy kẹp giữa cạnh và đỉnh */}
         <g>
           {bigGraph.edges.map((e) => {
             const a = bigLayout[e.from]
@@ -165,35 +221,37 @@ export function ExplosionScene({
         ))}
 
         {/* đỉnh */}
-        {bigGraph.nodes.map((n) => {
-          const p = bigLayout[n.id]
-          const isEnd = n.id === 'S' || n.id === 'T'
-          return (
-            <g key={n.id}>
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={isEnd ? 30 : 17}
-                fill={isEnd ? '#0f2733' : 'var(--ink-3)'}
-                stroke={isEnd ? 'var(--cyan)' : 'var(--line)'}
-                strokeWidth={isEnd ? 3 : 2}
-              />
-              {isEnd && (
-                <text
-                  x={p.x}
-                  y={p.y + 2}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize={26}
-                  fontWeight={800}
-                  fill="var(--fog-100)"
-                >
-                  {n.id === 'S' ? 'A' : 'B'}
-                </text>
-              )}
-            </g>
-          )
-        })}
+        <g>
+          {bigGraph.nodes.map((n) => {
+            const p = bigLayout[n.id]
+            const isEnd = n.id === 'S' || n.id === 'T'
+            return (
+              <g key={n.id}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={isEnd ? 30 : 17}
+                  fill={isEnd ? '#0f2733' : 'var(--ink-3)'}
+                  stroke={isEnd ? 'var(--cyan)' : 'var(--line)'}
+                  strokeWidth={isEnd ? 3 : 2}
+                />
+                {isEnd && (
+                  <text
+                    x={p.x}
+                    y={p.y + 2}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={26}
+                    fontWeight={800}
+                    fill="var(--fog-100)"
+                  >
+                    {n.id === 'S' ? 'A' : 'B'}
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        </g>
       </svg>
 
       {/* counter lớn — ẩn hẳn khi chưa vào cuộc đếm */}

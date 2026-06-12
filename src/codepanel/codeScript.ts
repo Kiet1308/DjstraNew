@@ -114,7 +114,8 @@ const scBackToA: GraphSceneState = sceneBase({
   mathOverlays: [{ at: 'A', text: '4+4=8 > 0 → giữ nguyên', tone: 'worse', dx: 60, dy: -110 }],
 })
 
-/** Toàn cảnh kết quả. */
+/** Toàn cảnh kết quả — đường sáng. CHỈ dùng sau màn truy ngược Prev
+    (trước đó máy chỉ biết CON SỐ, thắp sẵn đường là spoil chính câu hỏi). */
 const scFull: GraphSceneState = sceneBase({
   fog: { revealed: ['A', 'C', 'G', 'D', 'E', 'F', 'H', 'B'] },
   nodeStates: {
@@ -140,7 +141,354 @@ const scFull: GraphSceneState = sceneBase({
     GH: 'dimmed',
     FB: 'hidden',
   },
-  costs: { A: 0, C: 4, G: 6, E: 10, D: 14, B: 16 },
+  costs: { A: 0, C: 4, G: 6, E: 10, D: 14, B: 16, F: 18, H: 20 },
+})
+
+const R_ALL = ['A', 'C', 'G', 'D', 'E', 'F', 'H', 'B']
+const ALL_DIM = {
+  AC: 'dimmed',
+  AG: 'dimmed',
+  AD: 'dimmed',
+  CD: 'dimmed',
+  CE: 'dimmed',
+  ED: 'dimmed',
+  EB: 'dimmed',
+  DB: 'dimmed',
+  GF: 'dimmed',
+  GH: 'dimmed',
+  FB: 'hidden',
+} as const
+const COSTS_FINAL = { A: 0, C: 4, G: 6, E: 10, D: 14, F: 18, H: 20, B: 16 }
+
+/** Kết thúc thuật toán: biết GIÁ mọi điểm — KHÔNG cạnh nào sáng. Đường chưa tồn tại. */
+const scCostsNoPath: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'locked',
+    B: 'locked',
+    F: 'frontier',
+    H: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM },
+  costs: COSTS_FINAL,
+})
+
+/* ===== Cảnh "cho máy LỖI chạy thật" — vì sao phải có if (Cụm B) ===== */
+
+/** Tua đến lúc chốt D: B đang giữ 16 đẹp qua lối A–C–E–B (sáng mờ). */
+const scNaiveSetup: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'current',
+    F: 'frontier',
+    H: 'frontier',
+    B: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM, AC: 'active', CE: 'active', EB: 'active' },
+  costs: COSTS_FINAL,
+  weights: true,
+})
+
+/** Mở lại B từ D: newCost = 14+6 = 20. */
+const scNaiveRelax: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'current',
+    F: 'frontier',
+    H: 'frontier',
+    B: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM, AC: 'active', CE: 'active', EB: 'active', DB: 'relaxing' },
+  costs: COSTS_FINAL,
+  weights: true,
+  mathOverlays: [{ at: 'B', text: '14+6=20', tone: 'info', dx: -60 }],
+})
+
+/** CÚ ĐẤM: không có if → 16 bị đè thành 20, lối đẹp tắt phụt. */
+const scNaiveOverwrite: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'current',
+    F: 'frontier',
+    H: 'frontier',
+    B: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM, DB: 'active' },
+  costs: { ...COSTS_FINAL, B: 20 },
+  costFlash: { B: 'worse' },
+  weights: true,
+})
+
+/** Hậu quả đứng hình: máy trả lời 20 — sai. */
+const scNaiveBroken: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'current',
+    F: 'frontier',
+    H: 'frontier',
+    B: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM },
+  costs: { ...COSTS_FINAL, B: 20 },
+  costFlash: { B: 'worse' },
+  weights: true,
+  mathOverlays: [{ at: 'B', text: 'máy trả lời 20 ✗ (đáp án thật: 16)', tone: 'worse', dx: -120 }],
+})
+
+/** Nhánh == null: ngăn TRỐNG (chưa từng thấy F) → lần đầu cứ ghi. */
+const scNullFirstWrite: GraphSceneState = sceneBase({
+  fog: { revealed: ['A', 'C', 'G', 'D', 'E', 'F', 'H'] },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    D: 'frontier',
+    E: 'frontier',
+    F: 'frontier',
+    H: 'frontier',
+  },
+  edgeStates: { ED: 'hidden', EB: 'hidden', DB: 'hidden', FB: 'hidden', GF: 'relaxing' },
+  costs: { A: 0, C: 4, G: 6, D: 16, E: 10, F: null, H: 20 },
+  weights: true,
+  mathOverlays: [{ at: 'F', text: 'trống → ghi 6+12=18', tone: 'better', dx: -130, dy: -110 }],
+})
+
+/* ===== Cảnh Phần Prev (Cụm C) — visual là chính ===== */
+
+/** "16 — nhưng đi lối nào?" — B hỏi, không cạnh nào trả lời. */
+const scPrevAsk: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'locked',
+    B: 'current',
+    F: 'frontier',
+    H: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM },
+  costs: COSTS_FINAL,
+  mathOverlays: [{ at: 'B', text: '16 — nhưng đi lối nào?', tone: 'info', dx: -90, dy: -110 }],
+})
+
+/** Ba cửa vào B — chẳng cửa nào ghi dấu. */
+const scThreeDoors: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'locked',
+    B: 'current',
+    F: 'frontier',
+    H: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM, DB: 'active', EB: 'active', FB: 'active' },
+  costs: COSTS_FINAL,
+})
+
+/** Ý ngây thơ — Path[C] chép lộ trình: đồ thị sáng đồng bộ A–C. */
+const scPathC: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'onPath',
+    C: 'onPath',
+    G: 'locked',
+    E: 'locked',
+    D: 'locked',
+    B: 'locked',
+    F: 'dimmed',
+    H: 'dimmed',
+  },
+  edgeStates: { ...ALL_DIM, AC: 'onPath' },
+  costs: COSTS_FINAL,
+})
+
+/** Bảng dài thêm: các route chia nhánh từ A–C–E. */
+const scPathAll: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'onPath',
+    C: 'onPath',
+    E: 'onPath',
+    G: 'locked',
+    D: 'locked',
+    B: 'locked',
+    F: 'dimmed',
+    H: 'dimmed',
+  },
+  edgeStates: { ...ALL_DIM, AC: 'onPath', CE: 'onPath', ED: 'active', EB: 'active' },
+  costs: COSTS_FINAL,
+})
+
+/** Quan sát trên đồ thị: 2 route chung HỆT đoạn đầu, khác đúng bước cuối. */
+const scShareStart: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'onPath',
+    C: 'onPath',
+    E: 'onPath',
+    B: 'current',
+    G: 'dimmed',
+    D: 'dimmed',
+    F: 'dimmed',
+    H: 'dimmed',
+  },
+  edgeStates: { ...ALL_DIM, AC: 'onPath', CE: 'onPath', EB: 'active' },
+  costs: { A: 0, C: 4, E: 10, B: 16 },
+})
+
+/** Cây mũi tên "tôi đến từ đây" — mỗi điểm đúng MỘT mũi tên. */
+const PREV_TREE = (flareAt?: string) =>
+  [
+    { node: 'C', from: 'A' },
+    { node: 'G', from: 'A' },
+    { node: 'E', from: 'C' },
+    { node: 'D', from: 'E' },
+    { node: 'B', from: 'E' },
+    { node: 'F', from: 'G' },
+    { node: 'H', from: 'G' },
+  ].map((a) => ({ ...a, flare: a.node === flareAt }))
+
+const scPrevTree: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'locked',
+    B: 'locked',
+    F: 'frontier',
+    H: 'frontier',
+  },
+  edgeStates: { ...ALL_DIM },
+  costs: COSTS_FINAL,
+  prevArrows: PREV_TREE(),
+})
+
+/** Diễn lại relax THẬT lần 1: chốt C mở D — mũi tên D→C cắm theo cost. */
+const scPrevWrite1: GraphSceneState = sceneBase({
+  fog: { revealed: ['A', 'C', 'G', 'D', 'E'] },
+  nodeStates: { A: 'locked', C: 'locked', G: 'frontier', D: 'frontier', E: 'frontier' },
+  edgeStates: {
+    ED: 'hidden',
+    EB: 'hidden',
+    DB: 'hidden',
+    GF: 'hidden',
+    GH: 'hidden',
+    FB: 'hidden',
+    AC: 'relaxing',
+    CD: 'relaxing',
+    CE: 'active',
+  },
+  costs: { A: 0, C: 4, G: 6, D: 16, E: 10 },
+  weights: true,
+  mathOverlays: [{ at: 'D', text: '4+12=16', tone: 'better', dx: -30 }],
+  prevArrows: [
+    { node: 'G', from: 'A' },
+    { node: 'E', from: 'C' },
+    { node: 'D', from: 'C', flare: true },
+  ],
+})
+
+/** Relax lần 2 (E thắng): cost D 16→14 VÀ mũi tên D XOAY C→E — cùng khoảnh khắc.
+    (Thời điểm: E vừa chốt ⇒ G ĐÃ chốt trước đó — đúng thứ tự C→G→E.) */
+const scPrevSwing: GraphSceneState = sceneBase({
+  fog: { revealed: ['A', 'C', 'G', 'D', 'E'] },
+  nodeStates: { A: 'locked', C: 'locked', G: 'locked', E: 'locked', D: 'frontier' },
+  edgeStates: {
+    EB: 'hidden',
+    DB: 'hidden',
+    GF: 'hidden',
+    GH: 'hidden',
+    FB: 'hidden',
+    ED: 'relaxing',
+    CE: 'active',
+  },
+  costs: { A: 0, C: 4, G: 6, D: 14, E: 10 },
+  weights: true,
+  mathOverlays: [{ at: 'D', text: '10+4=14 < 16', tone: 'better', dx: -30 }],
+  prevArrows: [
+    { node: 'G', from: 'A' },
+    { node: 'E', from: 'C' },
+    { node: 'D', from: 'E', flare: true },
+  ],
+})
+
+/** Truy ngược: hỏi B → E → C → A, thắp sáng từng đoạn. */
+const scTraceB: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'locked',
+    D: 'locked',
+    B: 'current',
+    F: 'dimmed',
+    H: 'dimmed',
+  },
+  edgeStates: { ...ALL_DIM, EB: 'onPath' },
+  costs: COSTS_FINAL,
+  prevArrows: PREV_TREE('B'),
+})
+
+const scTraceE: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'locked',
+    C: 'locked',
+    G: 'locked',
+    E: 'current',
+    D: 'locked',
+    B: 'onPath',
+    F: 'dimmed',
+    H: 'dimmed',
+  },
+  edgeStates: { ...ALL_DIM, EB: 'onPath', CE: 'onPath' },
+  costs: COSTS_FINAL,
+  prevArrows: PREV_TREE('E'),
+})
+
+const scTraceC: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'onPath',
+    C: 'current',
+    G: 'locked',
+    E: 'onPath',
+    D: 'locked',
+    B: 'onPath',
+    F: 'dimmed',
+    H: 'dimmed',
+  },
+  edgeStates: { ...ALL_DIM, EB: 'onPath', CE: 'onPath', AC: 'onPath' },
+  costs: COSTS_FINAL,
+  prevArrows: PREV_TREE('C'),
 })
 
 /* ============================== Dòng code ============================== */
@@ -191,8 +539,10 @@ function need(
 }
 
 export const BUILD_SCRIPT: CodeBeat[] = [
-  // ---- 3 beat cầu nối: sương ↔ dữ liệu
+  /* ===== MÀN 1 — cầu nối sương ↔ dữ liệu (visual, cả 3 beat đều có thẻ
+     phụ → đồ thị đứng yên một cỡ suốt màn, không nhún lên xuống) ===== */
   {
+    focus: 'visual',
     callout: {
       tone: 'need',
       text: t(
@@ -208,6 +558,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       ),
     },
     graphScene: scThreeStates,
+    aside: 'stateTable',
     pseudoStep: null,
   },
   {
@@ -236,8 +587,10 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       ),
     },
     graphScene: scThreeStates,
+    aside: 'costCabinet',
   },
 
+  /* ===== MÀN 2 — gõ máy (code nở một lần, đứng yên suốt màn) ===== */
   // ---- khung hàm
   ...need(
     {
@@ -249,6 +602,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       ),
     },
     { ops: [{ op: 'insert', afterId: null, lines: [fnOpen, fnClose] }], highlight: ['fn-open'] },
+    { focus: 'code' },
   ),
 
   // ---- 2 ngăn tủ
@@ -340,7 +694,11 @@ export const BUILD_SCRIPT: CodeBeat[] = [
   ...need(
     {
       tone: 'need',
-      text: t('Gặp ứng viên hợp lệ thì so: ai bé hơn "quán quân tạm thời" thì lên thay.'),
+      text: t(
+        'Gặp ứng viên hợp lệ thì so: ai bé hơn "quán quân tạm thời" thì lên thay. Ba điểm đang mở: ',
+        em('6 < 10 < 16', 'var(--cyan)'),
+        ' — G thắng.',
+      ),
     },
     {
       ops: [{ op: 'insert', afterId: 'scan-if-open', lines: [minIfOpen, minSet, minIfClose] }],
@@ -434,22 +792,89 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     highlight: ['setcost'],
   },
 
-  // ---- khoảnh khắc đắt nhất: WRAP
-  ...need(
-    {
+  /* ===== MÀN 3 — máy lỗi CHẠY THẬT (visual: đồ thị nở to xem tai họa) =====
+     KHÔNG KỂ tai họa — code trên màn lúc này thật sự chưa có if, lỗi 100% thật */
+  {
+    focus: 'visual',
+    callout: {
       tone: 'warn',
       text: t(
-        em('Khoan!', 'var(--red)'),
-        ' Có khi ngăn tủ đã có số ',
+        'Dòng vừa viết có ',
+        em('kẽ hở', 'var(--red)'),
+        '. Tua máy đến lúc chốt D — B đang giữ số đẹp: ',
+        em('16', 'var(--cyan)'),
+        ', qua lối sáng kia.',
+      ),
+    },
+    graphScene: scNaiveSetup,
+  },
+  {
+    callout: {
+      tone: 'warn',
+      text: t('Mở lại B từ D: newCost = 14+6 = ', em('20'), '.'),
+    },
+    highlight: ['newcost'],
+    graphScene: scNaiveRelax,
+  },
+  {
+    callout: {
+      tone: 'warn',
+      text: t(
+        'Dòng của ta ',
+        em('ghi đè không hỏi han', 'var(--red)'),
+        '. Con đường 16 — ',
+        em('bay màu', 'var(--red)'),
+        '.',
+      ),
+    },
+    highlight: ['setcost'],
+    highlightTone: 'danger',
+    graphScene: scNaiveOverwrite,
+  },
+  {
+    callout: {
+      tone: 'need',
+      text: t(
+        'Hỏng: máy trả lời ',
+        em('20 ✗', 'var(--red)'),
+        '. Vậy luật ghi tủ: chỉ được ghi khi ',
         em('tốt hơn'),
-        ' rồi — nhớ B=16 mà ngả vòng qua D tính ra 20 chứ? Chỉ được ghi đè khi: ngăn còn ',
+        '.',
+      ),
+    },
+    graphScene: scNaiveBroken,
+  },
+  {
+    callout: {
+      tone: 'need',
+      text: t(
+        'Còn ngăn ',
+        em('TRỐNG', 'var(--cyan)'),
+        '? Trống = chưa từng thấy — lần đầu thì cứ ghi. So "nhỏ hơn" với cái-chưa-có là vô nghĩa, nên hỏi ',
+        em('trống?', 'var(--cyan)'),
+        ' trước.',
+      ),
+    },
+    highlight: ['setcost'],
+    graphScene: scNullFirstWrite,
+  },
+  /* ===== MÀN 4 — vá máy + return (quay về code đúng lúc đặt tay gõ) ===== */
+  ...need(
+    {
+      tone: 'insight',
+      text: t(
+        'Bọc dòng cũ lại: còn ',
         em('trống', 'var(--cyan)'),
-        ', hoặc số mới ',
+        ', hoặc ',
         em('nhỏ hơn', 'var(--cyan)'),
-        '. Bọc dòng vừa viết trong một điều kiện.',
+        ' — mới được ghi. Chạy lại đúng tình huống vừa nãy: 20 > 16 → ',
+        em('giữ nguyên'),
+        '. Con đường 16 sống sót.',
       ),
     },
     {
+      // máy quay về code TẠI beat gõ — beat nói trước đó vẫn đứng trong màn visual
+      focus: 'code',
       ops: [
         {
           op: 'wrap',
@@ -487,10 +912,11 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       ),
     },
     { ops: [{ op: 'insert', afterId: 'loop-close', lines: [ret] }], highlight: ['ret'] },
-    { graphScene: scFull, pseudoStep: null },
+    // máy lúc này chỉ biết CON SỐ — chưa hề biết đường (đường sáng để dành cho màn Prev)
+    { graphScene: scCostsNoPath, pseudoStep: null },
   ),
 
-  // ---- tổng kết
+  // ---- tổng kết — thắp cả 3 câu checklist: "25 dòng = 3 câu" nhìn thấy được
   {
     callout: {
       tone: 'insight',
@@ -500,8 +926,8 @@ export const BUILD_SCRIPT: CodeBeat[] = [
         '. Code không phát minh điều gì mới; nó chép lại suy luận.',
       ),
     },
-    graphScene: scFull,
-    pseudoStep: null,
+    graphScene: scCostsNoPath,
+    pseudoStep: 'all',
   },
 ]
 
@@ -537,9 +963,13 @@ const FULL_CODE: CodeLine[] = [
 ]
 
 export const PREV_SCRIPT: CodeBeat[] = [
+  /* ===== Màn 1 — Câu hỏi: biết GIÁ, không biết ĐƯỜNG ===== */
   // beat 0: code đầy đủ hiện sẵn (slide tắt typewriter ở beat này)
   {
     ops: [{ op: 'insert', afterId: null, lines: FULL_CODE }],
+    // focus visual DÍNH cho TOÀN slide: code đã đọc xong ở slide trước, mấy
+    // dòng Prev sắp gõ đều ngắn — panel hẹp đứng yên, đồ thị lớn suốt màn
+    focus: 'visual',
     callout: {
       tone: 'warn',
       text: t(
@@ -547,45 +977,104 @@ export const PREV_SCRIPT: CodeBeat[] = [
         em('con số 16'),
         ' — chứ chưa trả về ',
         em('con đường', 'var(--cyan)'),
-        '. Biết giá chuyến đi mà không biết lối đi.',
+        '. Nhìn bản đồ mà xem: toàn giá tiền, ',
+        em('không một lối đi nào được thắp sáng', 'var(--red)'),
+        '.',
       ),
     },
-    graphScene: scFull,
+    graphScene: scPrevAsk,
     pseudoStep: null,
   },
   {
     callout: {
       tone: 'need',
       text: t(
-        'Cách nghĩ đầu tiên ai cũng nghĩ: mỗi điểm lưu ',
+        'Đứng ở B nhìn lại: ba cửa dẫn vào — ',
+        em('chẳng cửa nào ghi dấu', 'var(--cyan)'),
+        ' "đường ngắn nhất đi lối này".',
+      ),
+    },
+    graphScene: scThreeDoors,
+  },
+
+  /* ===== Màn 2 — Ý tưởng ngây thơ & cái giá của nó ===== */
+  {
+    callout: {
+      tone: 'need',
+      text: t(
+        'Cách nghĩ đầu tiên ai cũng nghĩ: mỗi điểm tự chép ',
         em('nguyên cả lộ trình'),
         ' đến nó.',
       ),
     },
     aside: 'pathFull',
+    graphScene: scPathC,
+  },
+  {
+    callout: {
+      tone: 'need',
+      text: t('Điểm nào cũng một dòng như thế — bảng dài dần ra.'),
+    },
+    aside: 'pathGrow',
+    graphScene: scPathAll,
   },
   {
     callout: {
       tone: 'warn',
       text: t(
-        'Nhưng nhìn kỹ hai dãy bên phải: lộ trình của B ',
-        em('chứa nguyên', 'var(--red)'),
-        ' lộ trình của E, chỉ thêm đúng một bước cuối. Điểm nào cũng vậy — ta đang chép đi chép lại cùng một đoạn.',
+        'Bản đồ thật ',
+        em('nghìn điểm', 'var(--red)'),
+        ': mỗi ngăn tủ nhét cả một đoàn tàu tên.',
+      ),
+    },
+    aside: 'pathExplode',
+    graphScene: scPathAll,
+  },
+
+  /* ===== Màn 3 — Quan sát & nén: chỉ cần nhớ MỘT bước =====
+     (2 beat đầu còn thẻ phụ — nối liền khối thẻ màn 2; thẻ rút đi
+     ĐÚNG lúc cây mũi tên hiện: đồ thị nở to làm cú reveal) ===== */
+  {
+    callout: {
+      tone: 'insight',
+      text: t(
+        'Nhìn lên đồ thị: lộ trình của E và của B chung ',
+        em('HỆT đoạn đầu', 'var(--cyan)'),
+        ' — khác đúng ',
+        em('BƯỚC CUỐI'),
+        '.',
       ),
     },
     aside: 'pathWaste',
+    graphScene: scShareStart,
   },
   {
     callout: {
       tone: 'insight',
       text: t(
-        'Vậy mỗi điểm chỉ cần nhớ ',
-        em('MỘT bước'),
-        ': "đến đây theo đường ngắn nhất thì bước ngay trước là từ đâu?" Muốn cả con đường? Lần ngược là ra.',
+        'Vậy mỗi điểm chỉ cần nhớ đúng ',
+        em('MỘT điều'),
+        ': "tôi đến từ đâu?". Đặt tên ngăn tủ mới: ',
+        em('Prev'),
+        ' — "bước ngay trước".',
       ),
     },
     aside: 'prevChain',
+    graphScene: scShareStart,
   },
+  {
+    callout: {
+      tone: 'insight',
+      text: t(
+        'Mỗi điểm một mũi tên — cả bản đồ hóa thành ',
+        em('cây mũi tên chỉ về nhà', 'var(--green)'),
+        '. Muốn cả con đường? Lần ngược là ra.',
+      ),
+    },
+    graphScene: scPrevTree,
+  },
+
+  /* ===== Màn 4 — Code hóa: Prev ghi ĐÚNG chỗ ghi cost ===== */
   ...need(
     { tone: 'need', text: t('Thêm một ngăn tủ cho "bước ngay trước".') },
     {
@@ -597,12 +1086,27 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'need',
       text: t(
-        'Ghi Prev lúc nào? Bước-ngay-trước đổi ',
-        em('đúng lúc'),
-        ' ta tìm được đường ngắn hơn — tức là đúng chỗ đang ghi đè cost. Một chỗ duy nhất.',
+        'Ghi Prev lúc nào? Xem lại một lần ghi cost: chốt C, mở D — mũi tên ',
+        em('"tôi đến từ đây"', 'var(--cyan)'),
+        ' cắm theo.',
+      ),
+    },
+    highlight: ['setcost'],
+    graphScene: scPrevWrite1,
+  },
+  {
+    callout: {
+      tone: 'insight',
+      text: t(
+        'Tìm được đường ngắn hơn → cost đổi chủ → mũi tên ',
+        em('XOAY theo', 'var(--green)'),
+        ' (D: từ C sang E!). ',
+        em('Cùng một khoảnh khắc'),
+        ' — nên cùng một chỗ trong code.',
       ),
     },
     highlight: ['if-better-open', 'setcost', 'if-better-close'],
+    graphScene: scPrevSwing,
   },
   {
     callout: {
@@ -611,6 +1115,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
     },
     ops: [{ op: 'insert', afterId: 'setcost', lines: [prevSet] }],
     highlight: ['prev-set'],
+    graphScene: scPrevSwing,
   },
   {
     callout: {
@@ -621,8 +1126,47 @@ export const PREV_SCRIPT: CodeBeat[] = [
         ' — ai cần đường nào, lần ngược ra đường đó.',
       ),
     },
-    ops: [{ op: 'morph', targetId: 'ret', text: 'return Prev   // lần ngược từ end ra cả con đường' }],
+    // comment ngắn — panel hẹp 600px của màn visual phải đọc trọn dòng
+    ops: [{ op: 'morph', targetId: 'ret', text: 'return Prev   // lần ngược là ra' }],
     highlight: ['ret'],
+    // thứ được return chính là CÂY MŨI TÊN — không phải khoảnh khắc swing vừa rồi
+    graphScene: scPrevTree,
+  },
+
+  /* ===== Màn 5 — Truy ngược khép vòng "tư duy ngược" ===== */
+  {
+    callout: {
+      tone: 'need',
+      text: t('Chạy thử phép lần ngược. Hỏi B: "trước mày là ai?" — ', em('E'), '.'),
+    },
+    graphScene: scTraceB,
+  },
+  {
+    callout: {
+      tone: 'need',
+      text: t('Trước E? — ', em('C'), '.'),
+    },
+    graphScene: scTraceE,
+  },
+  {
+    callout: {
+      tone: 'insight',
+      text: t('Trước C? — ', em('A'), '. Chạm gốc.'),
+    },
+    graphScene: scTraceC,
+  },
+  {
+    callout: {
+      tone: 'insight',
+      text: t(
+        'Lật ngược lại: ',
+        em('A → C → E → B = 16'),
+        '. Bài toán hỏi xuôi — ta trả lời bằng cách ',
+        em('lần ngược', 'var(--cyan)'),
+        ': đúng kiểu nghĩ đã sinh ra cả phương pháp. Khép tròn.',
+      ),
+    },
+    graphScene: scFull,
   },
   {
     callout: {

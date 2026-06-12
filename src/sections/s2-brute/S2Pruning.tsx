@@ -8,21 +8,33 @@ import { GraphView } from '../../graph/GraphView'
 import { sceneBase, type GraphSceneState } from '../../graph/types'
 import { TravelerDot } from '../../graph/TravelerDot'
 import { CityDecorLayer } from '../../graph/mapDecor'
+import { routeToPathD } from '../../graph/usePointAlongPath'
 import { allBigPaths, BIG_TOTAL } from '../../explosion/ExplosionScene'
 import { simulatePruning } from '../../explosion/enumeratePaths'
+import { SnipScene, SNIP, BIGGEST_SNIP, type SnipPhase } from '../../explosion/SnipScene'
 import { useRafLoop } from '../../explosion/useRafLoop'
 import { CalloutSlot, Em, type CalloutDef } from '../s3-reverse/common'
 
 const PRUNE = simulatePruning(allBigPaths)
+// số lần phải "lần đường rồi mới biết": mỗi nhát kéo + mỗi tuyến đi trọn
+const PROBES = SNIP.events.length + SNIP.walkedFull
+const KILLED = BIGGEST_SNIP.suffixes.length
 
 type Beat = {
   scene: GraphSceneState
   callout?: CalloutDef
   frozen?: boolean // traveler đứng khựng ở D với đồng hồ 18 đỏ
+  cityGhosts?: boolean // 3 tuyến tương lai chết theo trên cityGraph
+  snip?: SnipPhase // cảnh nhát kéo trên bigGraph
   counters?: boolean // màn đếm Đã xét / Cắt sớm
 }
 
 const mapScene = sceneBase({ variant: 'map' })
+const prunedScene = sceneBase({
+  variant: 'map',
+  edgeStates: { ED: 'pruned', DB: 'pruned' },
+  nodeStates: { D: 'current' },
+})
 
 const BEATS = defineBeats<Beat>([
   // b0 — HỎI trước khi phát kiến thức
@@ -41,11 +53,7 @@ const BEATS = defineBeats<Beat>([
   },
   // b1 — CẮT
   {
-    scene: sceneBase({
-      variant: 'map',
-      edgeStates: { ED: 'pruned', DB: 'pruned' },
-      nodeStates: { D: 'current' },
-    }),
+    scene: prunedScene,
     frozen: true,
     callout: {
       tone: 'insight',
@@ -57,7 +65,54 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // b2 — Áp dụng đại trà: 2 counter thật
+  // b2 — MỚI: một nhát không chỉ giết MỘT tuyến (đếm được bằng mắt: 3)
+  {
+    scene: prunedScene,
+    frozen: true,
+    cityGhosts: true,
+    callout: {
+      tone: 'insight',
+      text: (
+        <>
+          Để ý: nhát cắt vừa rồi không chỉ bỏ MỘT tuyến. <Em>Mọi tuyến tương lai</Em> phải chui
+          qua đoạn đắt này — chưa kịp thử — <Em color="var(--red)">chết theo cùng lúc</Em>:
+          1 nhát = <Em>3 tuyến</Em>.
+        </>
+      ),
+    },
+  },
+  // b3 — MỚI: soi một nhát cắt trên bản đồ 12 ngã tư (HỎI trước, counter trả lời)
+  {
+    scene: mapScene,
+    snip: 'fanout',
+    callout: {
+      tone: 'need',
+      text: (
+        <>
+          Bản đồ 12 ngã tư lúc nãy: mới đi {BIGGEST_SNIP.prefix.length - 1} đoạn đã tốn{' '}
+          <Em color="var(--red)">{BIGGEST_SNIP.prefixCost}</Em> — hơn kỷ lục tạm trên bản đồ
+          này (<Em>{BIGGEST_SNIP.bestAtTime}</Em>). Câu hỏi: phía sau chỗ này còn{' '}
+          <Em>bao nhiêu tuyến chưa thử</Em> — mà tuyến nào cũng phải chui qua đúng đoạn đắt
+          này?
+        </>
+      ),
+    },
+  },
+  // b4 — MỚI: nhát kéo — cả chùm rụng cùng lúc
+  {
+    scene: mapScene,
+    snip: 'snipped',
+    callout: {
+      tone: 'insight',
+      text: (
+        <>
+          <Em color="var(--red)">MỘT nhát cắt — {KILLED} tuyến biến mất</Em>, không tốn thêm
+          một bước chân nào. Cắt càng <Em>sớm</Em>, chùm chết theo càng <Em>to</Em>.
+        </>
+      ),
+    },
+  },
+  // b5 — Áp dụng đại trà: counter thật
   {
     scene: mapScene,
     counters: true,
@@ -65,15 +120,15 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Áp dụng cho thành phố 12 ngã tư: trong{' '}
-          <Em>{BIG_TOTAL.toLocaleString('vi-VN')}</Em> tuyến, có{' '}
-          <Em color="var(--red)">{PRUNE.cutEarly.toLocaleString('vi-VN')}</Em> tuyến bị cắt
-          giữa chừng. Nhanh hơn hẳn!
+          Cả bản đồ: <Em>{BIG_TOTAL.toLocaleString('vi-VN')}</Em> tuyến —{' '}
+          <Em color="var(--red)">{PRUNE.cutEarly.toLocaleString('vi-VN')}</Em> bị cắt giữa
+          chừng bằng những nhát kéo như thế. Số tuyến phải đi trọn vẹn đến đích?{' '}
+          <Em>Chỉ {PRUNE.walkedFull}</Em>. Nhanh hơn hẳn!
         </>
       ),
     },
   },
-  // b3 — Gài cho S2StillSlow
+  // b6 — Gài cho S2StillSlow
   {
     scene: mapScene,
     counters: true,
@@ -81,14 +136,94 @@ const BEATS = defineBeats<Beat>([
       tone: 'warn',
       text: (
         <>
-          Nhưng để ý kỹ: muốn biết chỗ nào đáng cắt, ta vẫn phải{' '}
-          <Em>lần theo từng nhánh một</Em> rồi mới biết. Số nhánh phải lần… vẫn là{' '}
-          <Em color="var(--red)">{BIG_TOTAL.toLocaleString('vi-VN')}</Em>.
+          Nhưng kéo không tự biết chỗ cắt: vẫn phải <Em>mò đến tận nơi</Em> rồi mới biết là
+          đắt — <Em color="var(--red)">{PROBES}</Em> lần lần-đường-rồi-cắt như thế, chỉ cho 12
+          ngã tư. Bản đồ thật hàng nghìn ngã tư: số lần mò… vẫn <Em>bùng nổ</Em>.
         </>
       ),
     },
   },
 ])
+
+/** 3 tuyến tương lai bị giết theo nhát cắt tại D — đếm được bằng mắt. */
+const CITY_GHOST_ROUTES: string[][] = [
+  ['D', 'B'],
+  ['D', 'E', 'B'],
+  ['D', 'C', 'E', 'B'],
+]
+const CITY_GHOST_DS = CITY_GHOST_ROUTES.map((r) => routeToPathD(r.map((id) => mapLayout[id])))
+
+function CityGhosts({ animate }: { animate: boolean }) {
+  const dly = (i: number) => (animate ? 0.2 + i * 0.5 : 0)
+  return (
+    <svg
+      width={1920}
+      height={1080}
+      viewBox="0 0 1920 1080"
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+    >
+      {CITY_GHOST_DS.map((d, i) => (
+        <g key={i}>
+          <motion.path
+            d={d}
+            fill="none"
+            stroke="var(--red)"
+            strokeWidth={3.5}
+            strokeLinecap="round"
+            strokeDasharray="11 10"
+            initial={animate ? { pathLength: 0, opacity: 0 } : false}
+            animate={{ pathLength: 1, opacity: 0.4 }}
+            transition={{
+              pathLength: { duration: 0.55, ease: 'easeOut', delay: dly(i) },
+              opacity: { duration: 0.25, delay: dly(i) },
+            }}
+          />
+          <motion.text
+            x={mapLayout[CITY_GHOST_ROUTES[i][1]].x + (i === 0 ? 60 : 0)}
+            y={mapLayout[CITY_GHOST_ROUTES[i][1]].y - 40}
+            textAnchor="middle"
+            fontSize={30}
+            fontWeight={800}
+            fill="var(--red)"
+            initial={animate ? { opacity: 0 } : false}
+            animate={{ opacity: 0.9 }}
+            transition={{ delay: dly(i) + 0.55 }}
+          >
+            ✕
+          </motion.text>
+        </g>
+      ))}
+      <motion.g
+        initial={animate ? { opacity: 0 } : false}
+        animate={{ opacity: 1 }}
+        transition={{ delay: animate ? 1.9 : 0 }}
+      >
+        <rect
+          x={mapLayout.D.x + 46}
+          y={mapLayout.D.y + 30}
+          width={300}
+          height={52}
+          rx={13}
+          fill="rgba(42, 21, 18, 0.94)"
+          stroke="var(--red)"
+          strokeWidth={2.5}
+        />
+        <text
+          x={mapLayout.D.x + 196}
+          y={mapLayout.D.y + 57}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontFamily="var(--font-mono)"
+          fontSize={25}
+          fontWeight={700}
+          fill="var(--red)"
+        >
+          −3 tuyến — 0 bước chân
+        </text>
+      </motion.g>
+    </svg>
+  )
+}
 
 /**
  * Đồng hồ chi phí cộng dồn của lữ khách: NHẢY SỐ DẦN cùng nhịp chấm chạy,
@@ -163,7 +298,7 @@ function FrozenMeter({ animate }: { animate: boolean }) {
   )
 }
 
-/** Hai counter Đã xét / Cắt sớm — đếm bằng rAF, ghi thẳng textContent. */
+/** Hai counter Đã xét / Cắt sớm + dòng chốt "chỉ 9 đi trọn vẹn". */
 function PruneCounters({ active }: { active: boolean }) {
   const triedRef = useRef<HTMLSpanElement>(null)
   const cutRef = useRef<HTMLSpanElement>(null)
@@ -230,27 +365,50 @@ function PruneCounters({ active }: { active: boolean }) {
         left: 0,
         right: 0,
         display: 'flex',
-        justifyContent: 'center',
-        gap: 40,
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 22,
         zIndex: 12,
       }}
     >
-      {box('tuyến đã xét', triedRef, 'var(--cyan)')}
-      {box('bị cắt giữa chừng', cutRef, 'var(--red)')}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 40 }}>
+        {box('tuyến đã xét', triedRef, 'var(--cyan)')}
+        {box('bị cắt giữa chừng', cutRef, 'var(--red)')}
+      </div>
+      {/* con số gây sốc thật — hiện sau khi 2 counter đếm xong */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: active ? 2.1 : 0, duration: 0.45, ease: 'backOut' }}
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 34,
+          fontWeight: 700,
+          color: 'var(--amber)',
+          background: 'rgba(26, 18, 6, 0.92)',
+          border: '2px solid var(--amber-deep)',
+          borderRadius: 16,
+          padding: '12px 34px',
+        }}
+      >
+        chỉ {PRUNE.walkedFull} tuyến phải đi đến tận đích
+      </motion.div>
     </motion.div>
   )
 }
 
 function S2PruningSlide({ beat, direction }: SlideProps) {
   const def = BEATS.at(beat)
+  const onCity = !def.snip && !def.counters
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      <CityDecorLayer layout={mapLayout} edges={cityGraph.edges} opacity={def.counters ? 0.3 : 1} />
+      {/* Lớp THÀNH PHỐ (b0–b2) — crossfade sang lớp bigGraph, không remount */}
       <motion.div
-        animate={{ opacity: def.counters ? 0.3 : 1 }}
+        animate={{ opacity: onCity ? 1 : 0 }}
         transition={{ duration: 0.7 }}
-        style={{ position: 'absolute', inset: 0 }}
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
       >
+        <CityDecorLayer layout={mapLayout} edges={cityGraph.edges} opacity={1} />
         <GraphView graph={cityGraph} scene={def.scene} />
         {def.frozen && (
           <TravelerDot
@@ -262,16 +420,44 @@ function S2PruningSlide({ beat, direction }: SlideProps) {
             color="var(--red)"
           />
         )}
+        <AnimatePresence>
+          {def.cityGhosts && <CityGhosts animate={beat === 2 && direction === 1} />}
+        </AnimatePresence>
       </motion.div>
+
+      {/* Lớp BẢN ĐỒ 12 NGÃ TƯ (b3+) — nền mờ cho màn counter */}
+      <AnimatePresence>
+        {(def.snip || def.counters) && (
+          <motion.div
+            key="snip-layer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: def.counters ? 0.25 : 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.7 }}
+            style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+          >
+            <SnipScene
+              phase={def.snip ?? 'snipped'}
+              animate={direction === 1 && (beat === 3 || beat === 4)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {def.frozen && <FrozenMeter animate={beat === 0 && direction === 1} />}
       </AnimatePresence>
       <AnimatePresence>
-        {def.counters && <PruneCounters active={beat === 2 && direction === 1} />}
+        {def.counters && <PruneCounters active={beat === 5 && direction === 1} />}
       </AnimatePresence>
 
-      <CalloutSlot callout={def.callout} beatKey={beat} y={def.counters ? 840 : 54} x={def.counters ? 410 : 70} w={def.counters ? 1100 : 900} />
+      <CalloutSlot
+        callout={def.callout}
+        beatKey={beat}
+        y={def.counters ? 840 : 54}
+        x={def.counters ? 410 : 70}
+        w={def.counters ? 1100 : 900}
+      />
     </div>
   )
 }

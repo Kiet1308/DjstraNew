@@ -1,11 +1,28 @@
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Callout, type CalloutTone } from '../../components/Callout'
-import type { GraphSceneState } from '../../graph/types'
+import { sceneBase, type GraphSceneState } from '../../graph/types'
 
 export type CalloutDef = { tone: CalloutTone; text: ReactNode }
 
 export type ScenePatch = Partial<GraphSceneState>
+
+/** Phần 3 giữ BẢN ĐỒ xuyên suốt — morph sang đồ thị dời sang đầu Phần 4. */
+export function mapScene(over: Partial<GraphSceneState> = {}): GraphSceneState {
+  return sceneBase({ ...over, variant: 'map' })
+}
+
+/** Lùi beat = trạng thái lắng: bỏ stagger delay của mũi tên phụ thuộc. */
+export function stripDepDelays(scene: GraphSceneState): GraphSceneState {
+  if (!scene.depArrows) return scene
+  return {
+    ...scene,
+    depArrows: {
+      ...scene.depArrows,
+      arrows: scene.depArrows.arrows.map((a) => ({ ...a, delay: 0 })),
+    },
+  }
+}
 
 /** Gộp patch vào scene gốc — các record node/edge/cost merge theo key. */
 export function mergeScene(base: GraphSceneState, patch?: ScenePatch): GraphSceneState {

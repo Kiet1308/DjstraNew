@@ -163,19 +163,27 @@ export function GraphNode({
           transition={{ duration: 0.35, ease: 'backOut' }}
           style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
         >
-          <circle cx={x + size - 8} cy={y + size - 8} r={14} fill="#1a1206" />
-          <text
-            x={x + size - 8}
-            y={y + size - 7}
+          {/* cx/cy/x/y animate theo morph — dấu ✓ trượt cùng đỉnh, không nhảy */}
+          <motion.circle
+            r={14}
+            fill="#1a1206"
+            initial={false}
+            animate={{ cx: x + size - 8, cy: y + size - 8 }}
+            transition={{ cx: morph, cy: morph }}
+          />
+          <motion.text
             textAnchor="middle"
             dominantBaseline="central"
             fontSize={17}
             fontWeight={800}
             fill="var(--amber)"
+            initial={false}
+            animate={{ x: x + size - 8, y: y + size - 7 }}
+            transition={{ x: morph, y: morph }}
             style={{ pointerEvents: 'none' }}
           >
             ✓
-          </text>
+          </motion.text>
         </motion.g>
       )}
 

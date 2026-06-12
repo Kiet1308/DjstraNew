@@ -6,52 +6,44 @@ import { GraphView } from '../../graph/GraphView'
 import type { GraphSceneState } from '../../graph/types'
 import { Callout } from '../../components/Callout'
 import { Em, type CalloutDef } from './common'
-import { cutScene, finalScene } from './scenes'
+import { finalScene } from './scenes'
 
-type Beat = { graphOpacity: number; scene: GraphSceneState; panel?: CalloutDef; focusB?: boolean }
+/* Quy luật ĐÃ vỡ ra ngay trong màn sương (FogWalk b12) — slide này chỉ
+   NHÌN LẠI: gói hành trình thành một động tác, rồi bắc cầu sang pseudocode.
+   Không suy diễn gì mới, không replay bài giảng. */
+
+type Beat = { scene: GraphSceneState; panel?: CalloutDef; focusB?: boolean }
 
 const BEATS = defineBeats<Beat>([
+  // b0 — recap MỘT động tác
   {
-    graphOpacity: 0.22,
-    scene: finalScene,
-    panel: {
-      tone: 'need',
-      text: (
-        <>
-          Năm lần chốt vừa rồi — có để ý ta <Em>luôn chọn theo kiểu gì</Em> không? Nhìn dãy số
-          phía trên.
-        </>
-      ),
-    },
-  },
-  {
-    graphOpacity: 0.22,
     scene: finalScene,
     panel: {
       tone: 'insight',
       text: (
         <>
-          Dãy số chỉ có <Em>tăng dần</Em> — vì ở mỗi bước, ta luôn chốt được điểm{' '}
-          <Em>ĐANG MỞ có cost nhỏ nhất</Em> hiện tại.
+          Cả màn sương vừa rồi, gói lại chỉ còn <Em>MỘT động tác</Em> lặp đi lặp lại:{' '}
+          <Em>chốt điểm đang mở rẻ nhất</Em> → <Em>mở các điểm nối từ nó</Em> → lặp.
         </>
       ),
     },
   },
+  // b1 — bằng chứng "không một bước lãng phí" (trả nợ lời hứa đầu màn sương)
   {
-    graphOpacity: 1,
-    scene: cutScene,
+    scene: finalScene,
     panel: {
       tone: 'insight',
       text: (
         <>
-          Vì sao luôn chốt được? Nhớ đường "lẻn": mọi ngả khác đều phải chui qua một điểm đang
-          mở có cost <Em>không nhỏ hơn</Em> — rồi từ đó đi tiếp chỉ dài thêm.
+          Và để ý món quà: dãy số chốt <Em>4 → 6 → 10 → 14 → 16</Em> chỉ có đi lên — không số
+          nào phải quay lại sửa. Đúng <Em>lời hứa đầu màn sương</Em>: mỗi bước xong hẳn một
+          điểm — <Em>không một bước lãng phí</Em>.
         </>
       ),
     },
   },
+  // b2 — điểm dừng → bắc cầu sang 3 câu pseudocode
   {
-    graphOpacity: 0.22,
     scene: finalScene,
     focusB: true,
     panel: {
@@ -79,8 +71,8 @@ function S3InvariantSlide({ beat }: SlideProps) {
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <motion.div
-        animate={{ opacity: def.graphOpacity }}
-        transition={{ duration: 0.8 }}
+        animate={{ opacity: 0.22 }}
+        initial={{ opacity: 0.22 }}
         style={{ position: 'absolute', inset: 0 }}
       >
         <GraphView graph={cityGraph} scene={def.scene} />
@@ -172,7 +164,7 @@ function S3InvariantSlide({ beat }: SlideProps) {
 
 export const S3Invariant: SlideDef = {
   id: 's3-quy-luat',
-  title: 'Quy luật lộ ra',
+  title: 'Nhìn lại hành trình',
   section: 3,
   beats: BEATS.count,
   component: S3InvariantSlide,

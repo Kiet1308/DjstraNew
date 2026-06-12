@@ -54,16 +54,22 @@ await shot('explosion-1-done')
 await next(1300)
 await shot('explosion-2')
 
-// ---- S2Pruning (4 beat)
+// ---- S2Pruning (7 beat: cắt → ghost city → fanout bigGraph → nhát kéo → counters)
 await next(1200)
 await page.waitForTimeout(2200)
 await shot('prune-0')
 await next(1500)
 await shot('prune-1')
-await next(2400)
-await shot('prune-2')
+await next(2800) // 3 ghost city + chip
+await shot('prune-2-cityghosts')
+await next(3400) // prefix 1.2s + 23 ghost fan-out
+await shot('prune-3-fanout')
+await next(1800) // nhát kéo — chùm rụng
+await shot('prune-4-snipped')
+await next(2600) // counters đếm + dòng "chỉ 9 tuyến"
+await shot('prune-5-counters')
 await next(1300)
-await shot('prune-3')
+await shot('prune-6')
 
 // ---- S2StillSlow (3 beat)
 await next(1200)
@@ -73,7 +79,7 @@ for (let b = 0; b < 3; b++) {
 }
 
 // ---- Lùi xuyên Phần 1-2 về đầu
-for (let i = 0; i < 24; i++) {
+for (let i = 0; i < 27; i++) {
   await page.keyboard.press('ArrowLeft')
   await page.waitForTimeout(130)
 }

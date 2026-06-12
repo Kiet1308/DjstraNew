@@ -21,35 +21,52 @@ export type CodeOp =
 
 export type CodeCalloutTone = 'need' | 'insight' | 'warn'
 
-/** Hình phụ ở cột phải — bảng tra map, mảng Path thừa, chuỗi Prev. */
-export type CodeAside = 'mapTable' | 'pathFull' | 'pathWaste' | 'prevChain'
+/** Hình phụ ở cột phải — bảng tra map, mảng Path mọc dần/phình to, chuỗi Prev. */
+export type CodeAside =
+  | 'stateTable'
+  | 'mapTable'
+  | 'costCabinet'
+  | 'pathFull'
+  | 'pathGrow'
+  | 'pathExplode'
+  | 'pathWaste'
+  | 'prevChain'
 
 export type CodeBeat = {
   callout?: { text: ReactNode; tone: CodeCalloutTone }
   ops?: CodeOp[]
   /** id các dòng được rọi sáng ở beat này */
   highlight?: string[]
+  /** tông highlight — 'danger' = dòng đang gây họa (nền đỏ) */
+  highlightTone?: 'danger'
   /** cảnh đồ thị mini bên phải */
   graphScene?: GraphSceneState
-  /** câu pseudocode (1|2|3) đang được dịch — pin checklist sáng câu đó */
-  pseudoStep?: 1 | 2 | 3 | null
+  /** câu pseudocode (1|2|3) đang được dịch — pin checklist sáng câu đó;
+      'all' = thắp cả ba (beat tổng kết — chỉ dùng ở màn code, hàng dọc) */
+  pseudoStep?: 1 | 2 | 3 | 'all' | null
   aside?: CodeAside
+  /** Máy quay theo MÀN, không theo beat: focus DÍNH từ beat khai báo cho đến
+      khi một beat khác khai báo lại. Trong một màn KHÔNG GÌ đổi kích thước —
+      đổi focus là một cú chuyển cảnh có chủ đích, chỉ đặt ở ranh giới màn. */
+  focus?: 'code' | 'visual'
 }
 
 export type CodeState = {
   lines: CodeLine[]
   highlight: Set<string>
+  highlightTone?: 'danger'
   /** dòng mới sinh ra TẠI beat hiện tại (gõ máy chữ khi đi xuôi) */
   freshIds: Set<string>
   /** dòng vừa morph text tại beat hiện tại */
   morphedIds: Set<string>
-  pseudoStep: 1 | 2 | 3 | null
+  pseudoStep: 1 | 2 | 3 | 'all' | null
   graphScene?: GraphSceneState
   callout?: CodeBeat['callout']
   /** beat đầu của "chuỗi callout giống nhau" (need→ops dùng chung lời) —
       key cho AnimatePresence để lời không nháy lại giữa 2 beat */
   calloutKey: number
   aside?: CodeAside
+  focus: 'code' | 'visual'
 }
 
 /** Helper khai báo dòng — chuẩn hóa NFC ngay từ nguồn. */

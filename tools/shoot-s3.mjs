@@ -23,36 +23,36 @@ const next = async (settle = 900) => {
 }
 const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png` })
 
-// Tọa độ đỉnh (layout abstract, stage = viewport 1:1)
+// Tọa độ đỉnh (MAP layout — Phần 3 giữ bản đồ xuyên suốt; stage = viewport 1:1)
 const P = {
-  A: [280, 540], C: [610, 330], G: [545, 815], E: [1070, 265],
-  D: [1095, 610], F: [1230, 845], H: [880, 965], B: [1590, 480],
+  A: [300, 565], C: [635, 300], G: [515, 840], E: [1045, 240],
+  D: [1120, 635], F: [1255, 820], H: [850, 940], B: [1610, 455],
 }
 const click = async (id, settle = 1000) => {
   await page.mouse.click(P[id][0], P[id][1])
   await page.waitForTimeout(settle)
 }
 
-// ---- S3LookFromB (6 beat)
+// ---- S3LookFromB (5 beat — đã bỏ beat morph, morph dời sang S4)
 await page.goto('http://localhost:4173/#s3-nhin-tu-b.0')
 await page.reload()
 await page.waitForTimeout(1800)
-for (let b = 0; b < 6; b++) {
+for (let b = 0; b < 5; b++) {
   await shot(`lookfromb-${b}`)
-  if (b < 5) await next(b === 0 ? 1800 : 1500) // đợi settle hết stagger
+  if (b < 4) await next(b === 0 ? 1800 : 1500) // đợi settle hết stagger
 }
 
-// ---- S3Dependencies (6 beat)
+// ---- S3Dependencies (9 beat)
 await next(1300)
-for (let b = 0; b < 6; b++) {
+for (let b = 0; b < 9; b++) {
   await shot(`deps-${b}`)
-  if (b < 5) await next(1300)
+  if (b < 8) await next(1300)
 }
 
-// ---- S3FogWalk (16 beat, gate tại 3/7/10)
+// ---- S3FogWalk (18 beat, gate tại 3/6/11)
 await next(1300)
 console.log('fogwalk start:', hash())
-for (let b = 0; b < 16; b++) {
+for (let b = 0; b < 18; b++) {
   await shot(`fog-${b}`)
   if (b === 3) {
     await next(300) // NEXT bị chặn → hint
@@ -64,33 +64,33 @@ for (let b = 0; b < 16; b++) {
     await click('C', 1200)
     await shot('fog-3-resolved')
   }
-  if (b === 7) {
+  if (b === 6) {
     await click('D')
-    await shot('fog-7-try-D')
+    await shot('fog-6-try-D')
     await click('E')
-    await shot('fog-7-try-E')
+    await shot('fog-6-try-E')
     await click('G', 1200)
-    await shot('fog-7-resolved')
+    await shot('fog-6-resolved')
   }
-  if (b === 10) {
+  if (b === 11) {
     await click('F')
-    await shot('fog-10-try-F')
+    await shot('fog-11-try-F')
     await click('H')
     const tryH = await page.getByText('E–H = 5').isVisible()
     console.log(tryH ? 'PASS' : 'FAIL', ' click H hiện đúng phản ví dụ E–H (không bị overlay nuốt)')
-    await shot('fog-10-try-H')
+    await shot('fog-11-try-H')
     await click('E', 1200)
-    await shot('fog-10-resolved')
+    await shot('fog-11-resolved')
   }
-  if (b < 15) await next(1600)
+  if (b < 17) await next(1600)
 }
 console.log('fogwalk end:', hash())
 
-// ---- S3Invariant (4 beat)
+// ---- S3Invariant (3 beat)
 await next(1200)
-for (let b = 0; b < 4; b++) {
+for (let b = 0; b < 3; b++) {
   await shot(`invariant-${b}`)
-  if (b < 3) await next(1300)
+  if (b < 2) await next(1300)
 }
 
 // ---- S3Pseudocode (5 beat)
@@ -101,12 +101,13 @@ for (let b = 0; b < 5; b++) {
 }
 
 // ---- Tua lùi xuyên suốt về đầu Phần 3 — bắt lỗi hình khi đảo chiều
-for (let i = 0; i < 37; i++) {
+// tổng nhịp Phần 3: (5-1) + 1 + (9-1) + 1 + (18-1) + 1 + (3-1) + 1 + (5-1) + 1 = 39
+for (let i = 0; i < 39; i++) {
   await page.keyboard.press('ArrowLeft')
   await page.waitForTimeout(140)
 }
 await page.waitForTimeout(1200)
-console.log('sau khi lùi 37 nhịp:', hash())
+console.log('sau khi lùi 38 nhịp:', hash())
 await shot('rewind-landing')
 
 await browser.close()

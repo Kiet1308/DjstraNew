@@ -67,3 +67,58 @@ export function simulatePruning(paths: SimplePath[]): {
   }
   return { total: paths.length, cutEarly, walkedFull, best }
 }
+
+export type SnipEvent = {
+  /** tiền tố chung tính đến ĐIỂM CẮT (phần tử cuối = điểm cắt) */
+  prefix: NodeId[]
+  /** chi phí cộng dồn tại điểm cắt */
+  prefixCost: number
+  /** kỷ lục tạm thời lúc cắt */
+  bestAtTime: number
+  /** các đoạn tương lai chưa thử bị giết theo — mỗi mảng bắt đầu TỪ điểm cắt */
+  suffixes: NodeId[][]
+}
+
+/**
+ * Gom các tuyến bị cắt LIÊN TIẾP chung một chỗ cắt thành "nhát kéo" —
+ * mỗi nhát giết cả một chùm tuyến tương lai chưa kịp thử.
+ * Số liệu THẬT cho cảnh "một nhát cắt = cả chùm" của S2Pruning.
+ */
+export function computeSnipEvents(paths: SimplePath[]): {
+  events: SnipEvent[]
+  walkedFull: number
+  biggest: SnipEvent
+} {
+  let best = Infinity
+  let walkedFull = 0
+  const events: SnipEvent[] = []
+  let curKey: string | null = null
+  for (const p of paths) {
+    const cutAt = p.prefix.findIndex((c) => c >= best)
+    if (cutAt >= 0) {
+      const key = p.nodes.slice(0, cutAt + 1).join('>')
+      if (key !== curKey) {
+        curKey = key
+        events.push({
+          prefix: p.nodes.slice(0, cutAt + 1),
+          prefixCost: p.prefix[cutAt],
+          bestAtTime: best,
+          suffixes: [],
+        })
+      }
+      events[events.length - 1].suffixes.push(p.nodes.slice(cutAt))
+    } else {
+      walkedFull++
+      if (p.cost < best) best = p.cost
+      curKey = null
+    }
+  }
+  if (events.length === 0) {
+    throw new Error('computeSnipEvents: không có nhát cắt nào — đồ thị/kịch bản đổi?')
+  }
+  let biggest = events[0]
+  for (const e of events) {
+    if (e.suffixes.length > biggest.suffixes.length) biggest = e
+  }
+  return { events, walkedFull, biggest }
+}

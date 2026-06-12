@@ -1,4 +1,5 @@
 import type { SectionId, SlideDef } from './types'
+import { S4Morph } from '../sections/s4-code/S4Morph'
 import { S4Build } from '../sections/s4-code/S4Build'
 import { S4Prev } from '../sections/s4-code/S4Prev'
 import { S4Debugger } from '../debugger/DebuggerSlide'
@@ -38,6 +39,7 @@ export const slides: SlideDef[] = [
   S3FogWalk,
   S3Invariant,
   S3Pseudocode,
+  S4Morph,
   S4Build,
   S4Prev,
   S4Debugger,

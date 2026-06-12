@@ -41,7 +41,7 @@ await press('ArrowRight') // vào gate beat 3 theo chiều tiến
 check('NEXT vào gate beat 3', hash() === '#s3-trong-suong.3')
 await press('ArrowRight')
 check('NEXT bị chặn tại gate 1', hash() === '#s3-trong-suong.3')
-check('HUD hiện hint khi bị chặn', await page.getByText('click đỉnh trên đồ thị').isVisible())
+check('HUD hiện hint khi bị chặn', await page.getByText('click điểm trên bản đồ').isVisible())
 await press('Enter')
 await press('ArrowRight')
 check('Enter ép resolve → NEXT đi tiếp', hash() === '#s3-trong-suong.4')
@@ -50,7 +50,7 @@ check('PREV về gate đã resolve — không kẹt', hash() === '#s3-trong-suon
 await press('r')
 await press('ArrowRight')
 check('R re-arm → NEXT lại bị chặn', hash() === '#s3-trong-suong.3')
-await page.mouse.click(610, 330) // click C — đáp án đúng
+await page.mouse.click(635, 300) // click C — đáp án đúng (map layout)
 await page.waitForTimeout(500)
 await press('ArrowRight')
 check('click C resolve gate → NEXT đi tiếp', hash() === '#s3-trong-suong.4')

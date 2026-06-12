@@ -1,9 +1,11 @@
 import { defineBeats } from '../../deck/beatTable'
 import type { SlideDef, SlideProps } from '../../deck/types'
 import { cityGraph } from '../../graph/data'
+import { mapLayout } from '../../graph/layouts'
 import { GraphView } from '../../graph/GraphView'
-import { sceneBase, type GraphSceneState } from '../../graph/types'
-import { CalloutSlot, Em, type CalloutDef } from './common'
+import { CityDecorLayer } from '../../graph/mapDecor'
+import type { DepArrowDef, GraphSceneState } from '../../graph/types'
+import { CalloutSlot, Em, mapScene, stripDepDelays, type CalloutDef } from './common'
 
 type Beat = { scene: GraphSceneState; callout?: CalloutDef }
 
@@ -21,10 +23,34 @@ const allEdgesDimmed = {
   FB: 'dimmed',
 } as const
 
+/* Các tầng mũi tên — MỘT CHIỀU theo nghĩa đen của hình học: mọi mũi tên đều
+   chĩa về phía A (bên trái). Không bao giờ có cặp ngược chiều → không "quay vòng". */
+const T1 = (soft = false): DepArrowDef[] => [
+  { from: 'B', to: 'D', soft },
+  { from: 'B', to: 'E', soft },
+  { from: 'B', to: 'F', soft },
+]
+const T2d = (soft = false): DepArrowDef[] => [
+  { from: 'D', to: 'A', soft, delay: soft ? 0 : 0 },
+  { from: 'D', to: 'C', soft, delay: soft ? 0 : 0.15 },
+  { from: 'D', to: 'E', soft, delay: soft ? 0 : 0.3 },
+]
+const T2f = (soft = false): DepArrowDef[] => [{ from: 'F', to: 'G', soft }]
+const T3g = (soft = false): DepArrowDef[] => [{ from: 'G', to: 'A', soft }]
+const T4 = (soft = false): DepArrowDef[] => [
+  { from: 'E', to: 'C', soft },
+  { from: 'C', to: 'A', soft, delay: soft ? 0 : 0.7 },
+]
+
+const dimAll = (arrows: DepArrowDef[], except: (a: DepArrowDef) => boolean = () => false) =>
+  arrows.map((a) => ({ ...a, soft: false, delay: 0, dim: !except(a) }))
+
+const FULL_WEB = [...T1(true), ...T2d(true), ...T2f(true), ...T3g(true), ...T4(true)]
+
 const BEATS = defineBeats<Beat>([
-  // 1. Nhắc lại: B cần D/E/F
+  // b0 — Nhắc lại: B cần D/E/F
   {
-    scene: sceneBase({
+    scene: mapScene({
       edgeStates: { ...allEdgesDimmed },
       nodeStates: {
         B: 'current',
@@ -36,13 +62,7 @@ const BEATS = defineBeats<Beat>([
         G: 'fogged',
         H: 'fogged',
       },
-      depArrows: {
-        arrows: [
-          { from: 'B', to: 'D' },
-          { from: 'B', to: 'E' },
-          { from: 'B', to: 'F' },
-        ],
-      },
+      depArrows: { arrows: T1() },
     }),
     callout: {
       tone: 'need',
@@ -54,13 +74,13 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // 2. Lan một tầng: D lại cần A, C, E… và lòi ra vòng lặp D↔B
+  // b1 — Hỏi sâu MỘT cửa: D cần A, C, E
   {
-    scene: sceneBase({
+    scene: mapScene({
       edgeStates: { ...allEdgesDimmed },
       nodeStates: {
-        B: 'frontier',
         D: 'current',
+        B: 'frontier',
         E: 'frontier',
         F: 'frontier',
         A: 'idle',
@@ -68,106 +88,162 @@ const BEATS = defineBeats<Beat>([
         G: 'fogged',
         H: 'fogged',
       },
-      depArrows: {
-        arrows: [
-          { from: 'B', to: 'D' },
-          { from: 'B', to: 'E' },
-          { from: 'B', to: 'F' },
-          { from: 'D', to: 'A' },
-          { from: 'D', to: 'C' },
-          { from: 'D', to: 'E' },
-          { from: 'D', to: 'B', flip: true },
-        ],
-      },
+      depArrows: { arrows: [...T1(true), ...T2d()] },
     }),
     callout: {
       tone: 'need',
       text: (
         <>
-          Mà muốn tốt nhất đến D? Lại cần tốt nhất đến các điểm nối quanh nó — A, C, E… và
-          khoan, <Em color="var(--red)">cả B nữa?!</Em> B cần D, mà D lại cần B — câu hỏi{' '}
-          <Em>quay vòng</Em>. Càng thấy rõ: phải tìm một đầu mối <Em>chắc chắn</Em> mà đứng.
+          Thử hỏi sâu một cửa — <Em>D</Em>. Tốt nhất đến D? Câu hỏi y hệt lúc ở B: bước cuối
+          cùng VÀO D — từ <Em>A</Em>, từ <Em>C</Em>, hay từ <Em>E</Em>? Vậy lại cần tốt nhất
+          đến A, C, E trước đã.
         </>
       ),
     },
   },
-  // 3. Lan kín — quy luật lộ ra
+  // b2 — Cửa khác: F cần G
   {
-    scene: sceneBase({
+    scene: mapScene({
       edgeStates: { ...allEdgesDimmed },
-      nodeStates: { B: 'frontier', D: 'frontier', E: 'frontier', F: 'frontier', H: 'fogged' },
-      depArrows: {
-        arrows: [
-          { from: 'B', to: 'D' },
-          { from: 'B', to: 'E' },
-          { from: 'B', to: 'F' },
-          { from: 'D', to: 'A' },
-          { from: 'D', to: 'C' },
-          { from: 'D', to: 'E' },
-          { from: 'E', to: 'C' },
-          { from: 'F', to: 'G' },
-          { from: 'C', to: 'A' },
-          { from: 'G', to: 'A' },
-        ],
+      nodeStates: {
+        F: 'current',
+        B: 'frontier',
+        D: 'frontier',
+        E: 'frontier',
+        A: 'idle',
+        C: 'idle',
+        G: 'idle',
+        H: 'fogged',
       },
+      depArrows: { arrows: [...T1(true), ...T2d(true), ...T2f()] },
+    }),
+    callout: {
+      tone: 'need',
+      text: (
+        <>
+          Sang cửa khác — <Em>F</Em>. Bước cuối vào F? Từ <Em>G</Em>. Vậy lại cần tốt nhất đến
+          G.
+        </>
+      ),
+    },
+  },
+  // b3 — G cần A: nhánh đầu tiên CHẠM ĐÁY
+  {
+    scene: mapScene({
+      edgeStates: { ...allEdgesDimmed },
+      nodeStates: {
+        G: 'current',
+        B: 'frontier',
+        D: 'frontier',
+        E: 'frontier',
+        F: 'frontier',
+        A: 'idle',
+        C: 'idle',
+        H: 'fogged',
+      },
+      depArrows: { arrows: [...T1(true), ...T2d(true), ...T2f(true), ...T3g()] },
+    }),
+    callout: {
+      tone: 'need',
+      text: (
+        <>
+          Mà tốt nhất đến G? Bước cuối vào G — từ <Em>A</Em>. Nhánh này lùi hai bước là về tới{' '}
+          <Em>A</Em>.
+        </>
+      ),
+    },
+  },
+  // b4 — Hai điểm còn lại y hệt → QUY LUẬT
+  {
+    scene: mapScene({
+      edgeStates: { ...allEdgesDimmed },
+      nodeStates: {
+        E: 'current',
+        B: 'frontier',
+        D: 'frontier',
+        F: 'frontier',
+        G: 'frontier',
+        C: 'frontier',
+        A: 'idle',
+        H: 'fogged',
+      },
+      depArrows: { arrows: [...T1(true), ...T2d(true), ...T2f(true), ...T3g(true), ...T4()] },
     }),
     callout: {
       tone: 'insight',
       text: (
         <>
-          Quy luật lộ ra: đường ngắn nhất đến <Em>MỘT</Em> điểm luôn phụ thuộc đường ngắn nhất
-          đến <Em>các điểm ngay trước nó</Em>.
+          Hai điểm còn lại cũng không khác: E cần C, C cần A. Quy luật lộ ra: tốt nhất đến{' '}
+          <Em>MỘT</Em> điểm luôn cần tốt nhất đến <Em>các điểm ngay trước nó</Em>.
         </>
       ),
     },
   },
-  // 4. Mọi câu hỏi dồn về A — giữ mạng nhện cũ mờ phía sau để THẤY dòng chảy
+  // b5 — Quan sát HƯỚNG: mọi mũi tên chĩa về một phía
   {
-    scene: sceneBase({
+    scene: mapScene({
       edgeStates: { ...allEdgesDimmed },
       nodeStates: {
         A: 'current',
-        B: 'dimmed',
-        D: 'dimmed',
-        E: 'dimmed',
-        F: 'dimmed',
+        B: 'frontier',
+        C: 'frontier',
+        D: 'frontier',
+        E: 'frontier',
+        F: 'frontier',
+        G: 'frontier',
         H: 'fogged',
       },
       depArrows: {
-        arrows: [
-          { from: 'B', to: 'D', dim: true },
-          { from: 'B', to: 'E', dim: true },
-          { from: 'B', to: 'F', dim: true },
-          { from: 'D', to: 'E', dim: true },
-          { from: 'D', to: 'B', flip: true, dim: true },
-          { from: 'E', to: 'C', dim: true },
-          { from: 'F', to: 'G', dim: true },
-          { from: 'D', to: 'A' },
-          { from: 'C', to: 'A' },
-          { from: 'G', to: 'A' },
-        ],
+        arrows: dimAll(FULL_WEB, (a) => a.to === 'A'),
       },
     }),
     callout: {
       tone: 'insight',
       text: (
         <>
-          Để ý: hỏi mãi, hỏi mãi… mọi câu hỏi đều dồn về đúng một điểm — <Em>A</Em>. Mà "đường
-          ngắn nhất từ A đến A"? <Em>Bằng 0. Khỏi nghĩ.</Em> Đây là điểm DUY NHẤT ta chắc chắn
-          100% ngay từ đầu.
+          Giờ lùi ra nhìn cả tấm bản đồ: câu hỏi đẻ ra câu hỏi — nhưng mũi tên nào cũng chĩa về{' '}
+          <Em>cùng một phía</Em>. Chuỗi câu hỏi nào, lần ngược mãi, cũng đổ về đúng một điểm:{' '}
+          <Em>A</Em>.
         </>
       ),
     },
   },
-  // 5. Đảo chiều: XÂY từ A đi lên
+  // b6 — A là đáy: cả bản đồ "nợ câu trả lời", riêng A có sẵn
   {
-    scene: sceneBase({
+    scene: mapScene({
       edgeStates: { ...allEdgesDimmed },
       nodeStates: {
         A: 'current',
-        C: 'idle',
-        G: 'idle',
-        D: 'idle',
+        B: 'frontier',
+        C: 'frontier',
+        D: 'frontier',
+        E: 'frontier',
+        F: 'frontier',
+        G: 'frontier',
+        H: 'fogged',
+      },
+      depArrows: { arrows: dimAll(FULL_WEB) },
+      costs: { A: 0 },
+    }),
+    callout: {
+      tone: 'insight',
+      text: (
+        <>
+          Mà riêng A — "đường ngắn nhất từ A đến A"? <Em>Bằng 0. Có sẵn, khỏi nghĩ.</Em> Cả bản
+          đồ đang nợ câu trả lời — chỉ duy nhất A là trả lời được ngay từ đầu.
+        </>
+      ),
+    },
+  },
+  // b7 — Lật ngược: xây từ A đi lên
+  {
+    scene: mapScene({
+      edgeStates: { ...allEdgesDimmed },
+      nodeStates: {
+        A: 'current',
+        C: 'frontier',
+        G: 'frontier',
+        D: 'frontier',
         B: 'dimmed',
         E: 'dimmed',
         F: 'dimmed',
@@ -176,28 +252,28 @@ const BEATS = defineBeats<Beat>([
       depArrows: {
         arrows: [
           { from: 'A', to: 'C' },
-          { from: 'A', to: 'G' },
-          { from: 'A', to: 'D' },
+          { from: 'A', to: 'G', delay: 0.15 },
+          { from: 'A', to: 'D', delay: 0.3 },
         ],
         reversed: true,
       },
+      costs: { A: 0 },
     }),
     callout: {
       tone: 'need',
       text: (
         <>
-          Vậy lật ngược ván cờ: đứng ở B hỏi xuống thì câu hỏi đẻ ra câu hỏi, quay vòng cả tấm
-          bản đồ — trong khi chỉ có đúng MỘT chỗ cho sẵn câu trả lời: A. Đứng ở A,{' '}
-          <Em>XÂY câu trả lời đi lên</Em>. Mũi tên cũng lật theo, giờ đọc xuôi:{' '}
-          <Em color="var(--violet)">"A đã chắc — lan sang điểm bên cạnh"</Em>. Điểm nào chắc
-          chắn <Em>TIẾP</Em>?
+          Vậy lật ngược lại: phía B toàn câu hỏi nợ nhau — phía A có sẵn câu trả lời. Đứng ở A,{' '}
+          <Em>XÂY câu trả lời lan dần ra</Em>. Mũi tên lật theo, giờ đọc xuôi:{' '}
+          <Em color="var(--violet)">"A đã chắc — lan sang các điểm nối với nó"</Em>. Điểm nào
+          chắc chắn <Em>TIẾP</Em>?
         </>
       ),
     },
   },
-  // 6. Chuyển cảnh: sương phủ — vào vai người đứng ở A
+  // b8 — Chuyển cảnh: sương phủ — vào vai người đứng ở A
   {
-    scene: sceneBase({
+    scene: mapScene({
       fog: { revealed: ['A'] },
       nodeStates: { A: 'current' },
       edgeStates: {},
@@ -214,11 +290,20 @@ const BEATS = defineBeats<Beat>([
   },
 ])
 
-function S3DependenciesSlide({ beat }: SlideProps) {
+function S3DependenciesSlide({ beat, direction }: SlideProps) {
   const def = BEATS.at(beat)
+  // lùi beat = trạng thái lắng: mũi tên không replay stagger
+  const scene = direction === 1 ? def.scene : stripDepDelays(def.scene)
+  const lastBeat = beat === BEATS.count - 1
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      <GraphView graph={cityGraph} scene={def.scene} />
+      {/* phố xá chỉ là nền rất mờ — câu chuyện do mũi tên kể; sương xuống thì tắt hẳn */}
+      <CityDecorLayer
+        layout={mapLayout}
+        edges={cityGraph.edges}
+        opacity={lastBeat ? 0 : 0.22}
+      />
+      <GraphView graph={cityGraph} scene={scene} />
       <CalloutSlot callout={def.callout} beatKey={beat} />
     </div>
   )

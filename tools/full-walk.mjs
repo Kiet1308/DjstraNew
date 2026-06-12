@@ -13,11 +13,11 @@ page.on('console', (m) => {
 })
 
 const hash = () => new URL(page.url()).hash
-// đáp án các gate: gate1 → C, gate2 → G, gate3 → E (tọa độ abstract layout)
+// đáp án các gate: gate1 → C, gate2 → G, gate3 → E (tọa độ MAP layout — Phần 3 giữ bản đồ)
 const GATE_ANSWERS = {
-  '#s3-trong-suong.3': [610, 330],
-  '#s3-trong-suong.7': [545, 815],
-  '#s3-trong-suong.10': [1070, 265],
+  '#s3-trong-suong.3': [635, 300],
+  '#s3-trong-suong.6': [515, 840],
+  '#s3-trong-suong.11': [1045, 240],
 }
 
 await page.goto('http://localhost:4173/#s1-mo-man.0')

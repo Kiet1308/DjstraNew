@@ -1,15 +1,16 @@
-import { abstractLayout } from '../../graph/layouts'
+import { mapLayout } from '../../graph/layouts'
 import { sceneBase, type GraphSceneState } from '../../graph/types'
 
-const P = (id: string): [number, number] => [abstractLayout[id].x, abstractLayout[id].y]
+const P = (id: string): [number, number] => [mapLayout[id].x, mapLayout[id].y]
 
 /**
  * Đường "lẻn" của cut property — kể ĐÚNG câu chuyện của lập luận:
  * rời A bằng đường đã biết (A→C→E, trong vùng sáng), bước qua CỬA đang mở
  * tại E, RỒI mới lặn vào vùng tối vòng về G. Vùng tối không có cửa sau.
+ * (Tọa độ neo theo mapLayout — Phần 3 giữ bản đồ xuyên suốt.)
  */
 export const cutPhantom: GraphSceneState['phantom'] = {
-  points: [P('A'), P('C'), P('E'), [1480, 430], [1330, 800], [950, 940], P('G')],
+  points: [P('A'), P('C'), P('E'), [1500, 410], [1350, 790], [930, 920], P('G')],
   crossAt: P('E'),
 }
 
@@ -21,10 +22,14 @@ export const cutOverlay = {
   dy: 58,
 }
 
-/** Khoảnh khắc gate 2 + đường lẻn — dùng ở FogWalk b8 và replay ở Invariant. */
+/**
+ * Khoảnh khắc gate 2: G đang BỊ THỬ PHÁ (current, chưa khóa) — đường lẻn là
+ * nhát phá hụt. KHÔNG có costs: badge chỉ ra đời ở beat show-cost phía sau.
+ */
 export const cutScene: GraphSceneState = sceneBase({
+  variant: 'map',
   fog: { revealed: ['A', 'C', 'G', 'D', 'E'] },
-  nodeStates: { A: 'locked', C: 'locked', G: 'locked', E: 'current', D: 'current' },
+  nodeStates: { A: 'locked', C: 'locked', G: 'current', E: 'frontier', D: 'frontier' },
   edgeStates: {
     AC: 'idle',
     AG: 'idle',
@@ -39,13 +44,13 @@ export const cutScene: GraphSceneState = sceneBase({
     FB: 'hidden',
   },
   weights: true,
-  costs: { A: 0, C: 4, G: 6, D: 16, E: 10 },
   phantom: cutPhantom,
   mathOverlays: [cutOverlay],
 })
 
 /** Toàn cảnh kết thúc màn sương — đường A→C→E→B sáng, F/H mờ, F–B chưa từng biết. */
 export const finalScene: GraphSceneState = sceneBase({
+  variant: 'map',
   fog: { revealed: ['A', 'C', 'G', 'D', 'E', 'F', 'H', 'B'] },
   nodeStates: {
     A: 'onPath',
@@ -71,5 +76,6 @@ export const finalScene: GraphSceneState = sceneBase({
     FB: 'hidden',
   },
   weights: true,
-  costs: { A: 0, C: 4, G: 6, E: 10, D: 14, B: 16 },
+  // F/H vẫn đang mở với cost 18/20 — badge mờ theo node dimmed, không rơi mất
+  costs: { A: 0, C: 4, G: 6, E: 10, D: 14, B: 16, F: 18, H: 20 },
 })

@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { defineBeats } from '../../deck/beatTable'
 import type { SlideDef, SlideProps } from '../../deck/types'
-import { BIG_TOTAL } from '../../explosion/ExplosionScene'
 import { Em } from '../s3-reverse/common'
 
 /**
@@ -17,9 +16,9 @@ const LINES = [
     key: 'l0',
     body: (
       <>
-        Cắt nhánh là một bước tiến thật — mỗi chuyến đi <Em>ngắn hẳn</Em>. Nhưng cái danh
-        sách phải lần qua vẫn dài{' '}
-        <Em color="var(--red)">{BIG_TOTAL.toLocaleString('vi-VN')} dòng</Em>.
+        Cắt nhánh là một bước tiến thật — mỗi chuyến đi <Em>ngắn hẳn</Em>. Nhưng vẫn phải{' '}
+        <Em color="var(--red)">mò đến tận nơi</Em> mới biết chỗ cắt — bản đồ càng to, số lần
+        mò càng <Em color="var(--red)">bùng nổ</Em>.
       </>
     ),
   },

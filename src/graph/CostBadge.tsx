@@ -24,12 +24,15 @@ export function CostBadge({
   y,
   value,
   nodeState,
+  flash,
   size = 34,
 }: {
   x: number
   y: number
   value: number | null
   nodeState: Exclude<NodeVisualState, 'hidden'>
+  /** flash theo KỊCH BẢN (scene-driven, rewind-an-toàn): worse = bị ghi đè xấu */
+  flash?: 'worse' | 'better'
   size?: number
 }) {
   const prevRef = useRef<number | null>(null)
@@ -38,31 +41,40 @@ export function CostBadge({
     prevRef.current = value
   }, [value])
 
-  const tone = toneFor(nodeState)
+  // flash 'worse' giữ màu đỏ suốt beat — thông điệp của cảnh, không chỉ là hiệu ứng
+  const tone =
+    flash === 'worse'
+      ? { bg: '#2a1512', border: 'var(--red)', text: 'var(--red)' }
+      : flash === 'better'
+        ? { bg: '#143524', border: 'var(--green)', text: 'var(--green)' }
+        : toneFor(nodeState)
+  const pop = decreased || !!flash
   const text = value === null ? '' : String(value)
   const chipW = value === null ? 34 : 24 + text.length * 14
   const cx = x + size + 4
   const cy = y - size - 6
+  // morph map↔abstract: badge phải TRƯỢT theo đỉnh (cùng tween 1.1s), không nhảy
+  const morph = { type: 'tween' as const, duration: 1.1, ease: 'easeInOut' as const }
 
   return (
     <motion.g
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: nodeState === 'dimmed' ? 0.35 : 1, y: 0 }}
-      exit={{ opacity: 0, y: 6 }}
-      transition={{ duration: 0.35, ease: 'backOut' }}
+      initial={{ opacity: 0, x: cx, y: cy + 8 }}
+      animate={{ opacity: nodeState === 'dimmed' ? 0.35 : 1, x: cx, y: cy }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.35, ease: 'backOut', x: morph, y: morph }}
     >
-      {/* key theo value: GIẢM (đi xuôi) thì pop + lóe xanh;
-          TĂNG chỉ xảy ra khi tua lùi → đổi số im lặng (trạng thái lắng) */}
+      {/* key theo value+flash: GIẢM (đi xuôi) hoặc flash kịch bản thì pop;
+          TĂNG khi tua lùi → đổi số im lặng (trạng thái lắng) */}
       <motion.g
-        key={value === null ? 'ghost' : value}
-        initial={decreased ? { scale: 1.35 } : false}
+        key={`${value === null ? 'ghost' : value}-${flash ?? ''}`}
+        initial={pop ? { scale: 1.35 } : false}
         animate={{ scale: 1 }}
         transition={{ duration: 0.5, ease: 'backOut' }}
         style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
       >
         <motion.rect
-          x={cx - chipW / 2}
-          y={cy - 19}
+          x={-chipW / 2}
+          y={-19}
           width={chipW}
           height={38}
           rx={12}
@@ -77,8 +89,8 @@ export function CostBadge({
         />
         {value !== null && (
           <motion.text
-            x={cx}
-            y={cy + 1}
+            x={0}
+            y={1}
             textAnchor="middle"
             dominantBaseline="central"
             fontFamily="var(--font-mono)"

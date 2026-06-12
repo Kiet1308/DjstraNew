@@ -13,6 +13,7 @@ export function CodeLineRow({
   line,
   num,
   highlighted,
+  highlightTone,
   fresh,
   morphed,
   typeDelay = 0,
@@ -21,6 +22,8 @@ export function CodeLineRow({
   line: CodeLine
   num: number
   highlighted: boolean
+  /** 'danger' = dòng đang gây họa — nền đỏ thay nền cyan */
+  highlightTone?: 'danger'
   fresh: boolean
   morphed: boolean
   typeDelay?: number
@@ -60,8 +63,14 @@ export function CodeLineRow({
         display: 'flex',
         alignItems: 'baseline',
         minHeight: 32,
-        background: highlighted ? 'rgba(79, 216, 235, 0.09)' : 'transparent',
-        boxShadow: highlighted ? 'inset 3px 0 0 var(--cyan)' : 'none',
+        background: highlighted
+          ? highlightTone === 'danger'
+            ? 'rgba(255, 122, 110, 0.12)'
+            : 'rgba(79, 216, 235, 0.09)'
+          : 'transparent',
+        boxShadow: highlighted
+          ? `inset 3px 0 0 ${highlightTone === 'danger' ? 'var(--red)' : 'var(--cyan)'}`
+          : 'none',
         borderRadius: 6,
         overflow: 'hidden',
       }}

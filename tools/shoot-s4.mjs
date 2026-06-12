@@ -23,11 +23,22 @@ const next = async (settle = 1500) => {
 }
 const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png` })
 
+const hash = () => new URL(page.url()).hash
+
+// ---- S4Morph: 3 beat "bỏ lớp trang trí" (morph map→abstract dời từ P3 về đây)
+await page.goto('http://localhost:5174/#s4-do-thi.0')
+await page.reload()
+await page.waitForTimeout(2500)
+await shot('morph-0')
+await next(1400)
+await shot('morph-1')
+await next(2000) // morph 1.1s + decor tan
+await shot('morph-2')
+
 // ---- S4Build: đi hết toàn bộ beat, chụp mỗi beat
 await page.goto('http://localhost:5174/#s4-dung-may.0')
 await page.reload()
 await page.waitForTimeout(2500)
-const hash = () => new URL(page.url()).hash
 let b = 0
 while (hash().startsWith('#s4-dung-may')) {
   await shot(`build-${String(b).padStart(2, '0')}`)

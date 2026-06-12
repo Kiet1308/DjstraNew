@@ -8,6 +8,7 @@ export type SvgIds = {
   pathGrad: string
   fogSoft: string
   depArrowHead: string
+  prevArrowHead: string
   edgeArrowHead: string
 }
 
@@ -15,6 +16,7 @@ export const SvgIdsContext = createContext<SvgIds>({
   pathGrad: 'pathGrad',
   fogSoft: 'fogSoft',
   depArrowHead: 'depArrowHead',
+  prevArrowHead: 'prevArrowHead',
   edgeArrowHead: 'edgeArrowHead',
 })
 

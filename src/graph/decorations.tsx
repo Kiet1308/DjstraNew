@@ -1,5 +1,5 @@
 import { motion } from 'motion/react'
-import type { DepArrowDef, GhostEdge, MathOverlayDef } from './types'
+import type { DepArrowDef, GhostEdge, MathOverlayDef, PrevArrowDef } from './types'
 import type { LayoutMap } from './layouts'
 import { useSvgIds } from './svgIds'
 
@@ -12,6 +12,8 @@ export function DepArrow({
   from,
   to,
   dim,
+  soft,
+  delay = 0,
   flip,
   solid,
   layout,
@@ -47,14 +49,56 @@ export function DepArrow({
       d={`M ${p0.x} ${p0.y} Q ${cx} ${cy} ${p1.x} ${p1.y}`}
       fill="none"
       stroke="var(--violet)"
-      strokeWidth={solid ? 4.5 : 3.5}
+      strokeWidth={solid ? 4.5 : soft ? 3 : 3.5}
       strokeDasharray={solid ? undefined : '9 8'}
       strokeLinecap="round"
       markerEnd={`url(#${ids.depArrowHead})`}
       initial={{ opacity: 0, y: -14 }}
-      animate={{ opacity: dim ? 0.22 : 0.95, y: 0 }}
+      animate={{ opacity: dim ? 0.22 : soft ? 0.45 : 0.95, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.55, ease: 'easeOut' }}
+      transition={{ duration: 0.55, ease: 'easeOut', delay }}
+    />
+  )
+}
+
+/**
+ * Mũi tên "tôi đến từ đây" (Phần 4 — Prev): NGẮN, THẲNG, LIỀN NÉT, màu xanh —
+ * khác hẳn mũi tên phụ thuộc tím cong nét đứt của Phần 3, kẻo nhầm khái niệm.
+ * Cắm tại node, chỉ ngược về điểm ngay trước nó. Đổi from = exit/enter
+ * (AnimatePresence key theo `node:from`) — mũi tên cũ rút, mũi tên mới cắm.
+ */
+export function PrevArrow({
+  node,
+  from,
+  flare,
+  layout,
+  nodeRadius = 34,
+}: PrevArrowDef & { layout: LayoutMap; nodeRadius?: number }) {
+  const ids = useSvgIds()
+  const a = layout[node]
+  const b = layout[from]
+  const dist = Math.hypot(b.x - a.x, b.y - a.y) || 1
+  const ux = (b.x - a.x) / dist
+  const uy = (b.y - a.y) / dist
+  const start = nodeRadius + 12
+  const len = Math.min(110, Math.max(64, dist * 0.32))
+  const x1 = a.x + ux * start
+  const y1 = a.y + uy * start
+  const x2 = a.x + ux * (start + len)
+  const y2 = a.y + uy * (start + len)
+
+  return (
+    <motion.path
+      d={`M ${x1} ${y1} L ${x2} ${y2}`}
+      fill="none"
+      stroke={flare ? '#7dffc4' : 'var(--green)'}
+      strokeWidth={flare ? 6.5 : 5}
+      strokeLinecap="round"
+      markerEnd={`url(#${ids.prevArrowHead})`}
+      initial={{ pathLength: 0, opacity: 0 }}
+      animate={{ pathLength: 1, opacity: flare ? 1 : 0.85 }}
+      exit={{ opacity: 0, pathLength: 0.3 }}
+      transition={{ pathLength: { duration: 0.5, ease: 'easeOut' }, opacity: { duration: 0.3 } }}
     />
   )
 }

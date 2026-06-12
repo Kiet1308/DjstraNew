@@ -19,6 +19,7 @@ import {
   GhostEdgeView,
   MathOverlayChip,
   PhantomPath,
+  PrevArrow,
 } from './decorations'
 
 /** Dev-only: bắt typo id trong scene trước khi lên sóng. */
@@ -92,6 +93,7 @@ export function GraphView({
       pathGrad: `pathGrad-${uid}`,
       fogSoft: `fogSoft-${uid}`,
       depArrowHead: `depArrowHead-${uid}`,
+      prevArrowHead: `prevArrowHead-${uid}`,
       edgeArrowHead: `edgeArrowHead-${uid}`,
     }),
     [uid],
@@ -140,6 +142,17 @@ export function GraphView({
               <path d="M 1 1 L 11 6 L 1 11 z" fill="var(--violet)" />
             </marker>
             <marker
+              id={ids.prevArrowHead}
+              viewBox="0 0 12 12"
+              refX="9"
+              refY="6"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path d="M 1 1 L 11 6 L 1 11 z" fill="context-stroke" />
+            </marker>
+            <marker
               id={ids.edgeArrowHead}
               viewBox="0 0 12 12"
               refX="8"
@@ -184,6 +197,20 @@ export function GraphView({
           </g>
 
           {chaosFrom && layout[chaosFrom] && <ChaosRays from={layout[chaosFrom]} />}
+
+          {/* Mũi tên "tôi đến từ đây" (Prev) — trên cạnh, dưới đỉnh */}
+          <AnimatePresence>
+            {scene.prevArrows?.map((p) => (
+              <PrevArrow
+                key={`${p.node}:${p.from}`}
+                node={p.node}
+                from={p.from}
+                flare={p.flare}
+                layout={layout}
+                nodeRadius={nodeSize}
+              />
+            ))}
+          </AnimatePresence>
 
           {/* Đường giả định + đường lẻn — phía trên cạnh thật */}
           <AnimatePresence>
@@ -236,6 +263,7 @@ export function GraphView({
                     y={p.y}
                     value={v}
                     nodeState={st as Exclude<NodeVisualState, 'hidden'>}
+                    flash={scene.costFlash?.[id]}
                     size={nodeSize}
                   />
                 )
@@ -250,6 +278,8 @@ export function GraphView({
                 from={a.from}
                 to={a.to}
                 dim={a.dim}
+                soft={a.soft}
+                delay={a.delay}
                 flip={a.flip}
                 solid={scene.depArrows?.reversed}
                 layout={layout}

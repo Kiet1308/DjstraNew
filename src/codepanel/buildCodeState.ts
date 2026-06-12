@@ -66,7 +66,7 @@ export function buildCodeState(script: CodeBeat[], beat: number): CodeState {
 
   const cur = script[upTo]
   // pseudoStep "dính": giữ giá trị gần nhất đã khai báo
-  let pseudoStep: 1 | 2 | 3 | null = null
+  let pseudoStep: 1 | 2 | 3 | 'all' | null = null
   for (let i = upTo; i >= 0; i--) {
     if (script[i].pseudoStep !== undefined) {
       pseudoStep = script[i].pseudoStep ?? null
@@ -78,6 +78,15 @@ export function buildCodeState(script: CodeBeat[], beat: number): CodeState {
   for (let i = upTo; i >= 0; i--) {
     if (script[i].graphScene !== undefined) {
       graphScene = script[i].graphScene
+      break
+    }
+  }
+  // focus "dính" theo MÀN: chỉ đổi khi kịch bản khai báo — bố cục đứng yên
+  // trong cả màn, không bơm phồng/xẹp theo từng beat nói→gõ
+  let focus: 'code' | 'visual' = 'visual'
+  for (let i = upTo; i >= 0; i--) {
+    if (script[i].focus !== undefined) {
+      focus = script[i].focus!
       break
     }
   }
@@ -95,6 +104,7 @@ export function buildCodeState(script: CodeBeat[], beat: number): CodeState {
   return {
     lines,
     highlight: new Set(cur.highlight ?? []),
+    highlightTone: cur.highlightTone,
     freshIds: fresh,
     morphedIds: morphed,
     pseudoStep,
@@ -102,6 +112,7 @@ export function buildCodeState(script: CodeBeat[], beat: number): CodeState {
     callout: cur.callout,
     calloutKey,
     aside: cur.aside,
+    focus,
   }
 }
 
