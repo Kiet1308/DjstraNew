@@ -13,11 +13,11 @@ type Beat = { stage: 0 | 1 | 2 | 3 }
 const BEATS = defineBeats<Beat>([{ stage: 0 }, { stage: 1 }, { stage: 2 }, { stage: 3 }])
 
 const JOURNEY = [
-  'thử hết → quá chậm',
-  'cắt nhánh → vẫn chậm',
-  'nhìn ngược từ đích',
-  'chốt trong sương',
-  'thành 27 dòng code',
+  'đặt ra vấn đề',
+  'tư duy phản biện',
+  'hình thành ý tưởng',
+  'triển khai ý tưởng',
+  'tối ưu giải pháp',
 ]
 
 function S5RevealSlide({ beat, direction }: SlideProps) {
@@ -131,9 +131,9 @@ function S5RevealSlide({ beat, direction }: SlideProps) {
             >
               — phát biểu lần đầu cách đây khoảng <strong style={{ color: 'var(--fog-100)' }}>70 năm</strong>{' '}
               (1956), bởi Edsger W. Dijkstra. Ông ấy chỉ là người{' '}
-              <strong style={{ color: 'var(--fog-100)' }}>nói ra đầu tiên</strong> — còn suy luận
+              <strong style={{ color: 'var(--fog-100)' }}>tìm ra đầu tiên</strong> — còn suy luận
               thì, như mọi người vừa thấy,{' '}
-              <strong style={{ color: 'var(--amber)' }}>ai cũng làm được</strong>.
+              <strong style={{ color: 'var(--amber)' }}>nó không hề khó</strong>.
             </motion.p>
           )}
         </AnimatePresence>
@@ -147,7 +147,7 @@ function S5RevealSlide({ beat, direction }: SlideProps) {
               transition={{ delay: dly(0.4), duration: 0.8 }}
               style={{ fontSize: 30, color: 'var(--fog-300)', margin: '18px 0 0' }}
             >
-              Cảm ơn mọi người đã cùng đi xuyên màn sương.
+              Cảm ơn mọi người đã theo dõi.
             </motion.p>
           )}
         </AnimatePresence>
