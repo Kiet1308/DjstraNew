@@ -31,8 +31,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Cỗ máy chạy đúng rồi — nhưng nó <Em>NHANH hay CHẬM</Em>? Đừng đoán. Cách công bằng
-          nhất: <Em color="var(--cyan)">đếm xem nó tốn bao nhiêu bước</Em>.
+          Như vậy ta vừa xây dựng được <Em color="var(--cyan)">THUẬT TOÁN</Em> tìm <br />đường đi ngắn nhất giữa 2 điểm <br /><br />
+          Vậy thì <Em>ĐỘ PHỨC TẠP</Em> của <Em color="var(--cyan)">THUẬT TOÁN</Em> này như nào?
         </>
       ),
     },
@@ -45,9 +45,9 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Bản đồ thật có hàng nghìn điểm. Phóng tình huống lên <Em>n = 30 điểm</Em>. Từ giờ,
-          mỗi bước máy làm ta <Em color="var(--cyan)">chấm xuống một chấm</Em> — đếm bằng
-          mắt.
+          <Em>ĐỘ PHỨC TẠP</Em> của <Em color="var(--cyan)">THUẬT TOÁN</Em> đến từ 2 thao tác chính: <br /><br />
+          - Duyệt các đỉnh để tìm min<br />
+          - Cập nhật khoảng cách tạm thời
         </>
       ),
     },
@@ -60,8 +60,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Nhớ vòng for tìm min chứ? Mỗi lần chốt một điểm, máy phải{' '}
-          <Em>quét cả 30 điểm</Em> để tìm cost bé nhất — một hàng 30 chấm.
+          <Em>Vòng lặp for tìm min</Em>: <br></br>có thể thấy mỗi lần chốt 1 đỉnh , nó phải <Em color="var(--cyan)">duyệt tất cả các đỉnh</Em> để tìm cost bé nhất vì vậy cần <Em color="var(--cyan)">n bước</Em> (với <Em color="var(--cyan)">n</Em> là số đỉnh )
         </>
       ),
     },
@@ -74,8 +73,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Mà phải chốt đủ 30 điểm → 30 hàng như thế. <Em>30 × 30 = 900 bước</Em> — tổng quát:
-          cỡ <Em color="var(--cyan)">n × n bước</Em>.
+          <Em>Tương tự</Em> như vậy với các đỉnh còn lại , chốt hết các đỉnh <br></br>cần <Em color="var(--cyan)">n × n bước</Em>.
         </>
       ),
     },
@@ -89,9 +87,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Chưa hết: mỗi điểm chốt xong còn duyệt các đoạn nối quanh nó — cả chuyến đi đụng
-          vào mỗi đoạn nối đúng <Em>hai lần</Em> (mỗi đầu một lần). Cộng thêm{' '}
-          <Em color="var(--violet)">E bước</Em> (E = số đoạn nối).
+          <Em>Tiếp theo</Em> là mỗi lần chốt xong còn <Em>duyệt các cạnh kề </Em> để cập nhật khoảng cách , tổng cộng thêm{' '}<Em color="var(--violet)">E bước</Em> (E = số đoạn nối).
         </>
       ),
     },
@@ -106,9 +102,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          E nhiều nhất bao nhiêu? Mỗi cặp điểm một đoạn nối — <Em>n² là kịch trần</Em>. Vậy n²
-          + E cùng lắm cỡ 2n² — nhân đôi không đổi bản chất:{' '}
-          <Em color="var(--cyan)">vẫn là "cỡ n²"</Em>.
+          <Em>Tổng kết lại</Em> ta cần <Em color="var(--cyan)">N^2 + V bước</Em> để hoàn thành thuật toán.
         </>
       ),
     },
@@ -124,9 +118,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Việc đếm-cỡ-bước vừa làm, dân lập trình gọi là đánh giá <Em>ĐỘ PHỨC TẠP</Em>. Và
-          "cỡ n² bước" họ viết tắt là <Em color="var(--cyan)">O(n²)</Em> — ký hiệu tốc ký
-          thôi, không có gì bí hiểm.
+          Và vì <Em color="var(--cyan)">E</Em> không bao giờ lớn hơn <Em color="var(--cyan)">n^2</Em> nên độ phức tạp của thuật toán là <Em color="var(--cyan)">O(n^2)</Em>
         </>
       ),
     },
@@ -154,7 +146,7 @@ function S5CountingSlide({ beat, direction }: SlideProps) {
             <svg width={GRID_W + 260} height={GRID_W + 130} style={{ overflow: 'visible' }}>
               {/* nhãn */}
               <text x={GRID_W / 2} y={-2} textAnchor="middle" fontSize={20} fill="var(--fog-300)">
-                {def.rows >= 1 ? '← quét 30 điểm tìm min →' : ''}
+                {def.rows >= 1 ? '← quét n điểm tìm min →' : ''}
               </text>
               {Array.from({ length: N }, (_, r) => (
                 <g key={r}>
@@ -192,7 +184,7 @@ function S5CountingSlide({ beat, direction }: SlideProps) {
                   fill="var(--fog-300)"
                   transform={`rotate(-90 -16 ${GRID_W / 2 + 14})`}
                 >
-                  30 lần chốt
+                  n lần chốt
                 </motion.text>
               )}
               {/* dải E */}

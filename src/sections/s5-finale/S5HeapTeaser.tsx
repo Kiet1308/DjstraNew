@@ -66,7 +66,7 @@ function S5HeapTeaserSlide({ beat, direction }: SlideProps) {
         animate={{ opacity: 1, y: 0 }}
         style={{ fontSize: 46, fontWeight: 800, margin: 0 }}
       >
-        Bước nào đang <span style={{ color: 'var(--red)' }}>tốn nhất</span>?
+        Có thể <span style={{ color: 'var(--red)' }}>tối ưu</span> không?
         <AnimatePresence>
           {def.stage === 0 && (
             <motion.span
@@ -76,7 +76,7 @@ function S5HeapTeaserSlide({ beat, direction }: SlideProps) {
               transition={{ delay: dly(0.6) }}
               style={{ display: 'block', fontSize: 26, fontWeight: 400, color: 'var(--fog-400)', marginTop: 18 }}
             >
-              (nhìn lại trang code vừa dựng — đoạn nào phải cày nhiều nhất?)
+              (nhìn lại thuật toán vừa dựng — đoạn nào có thể tối ưu?)
             </motion.span>
           )}
         </AnimatePresence>
@@ -90,7 +90,7 @@ function S5HeapTeaserSlide({ beat, direction }: SlideProps) {
             exit={{ opacity: 0 }}
             style={{ fontSize: 30, color: 'var(--fog-200)', margin: 0, lineHeight: 1.55 }}
           >
-            Chính là cú <Em color="var(--red)">quét tìm min</Em> — bản đồ{' '}
+            Có thể thấy mỗi lần chốt 1 đỉnh ta phải <Em color="var(--red)">duyệt lại hết tất cả các đỉnh</Em> , như vậy thì hơi lâu và chưa được tối ưu —ví dụ bản đồ{' '}
             <Em>1.000.000 điểm</Em> thì MỖI LẦN chốt phải quét 1.000.000 bước.
           </motion.p>
         )}
@@ -129,10 +129,10 @@ function S5HeapTeaserSlide({ beat, direction }: SlideProps) {
             style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}
           >
             <p style={{ fontSize: 25, color: 'var(--fog-300)', margin: 0 }}>
-              Con số ~20 kỳ diệu ấy, dân toán gọi là <Em>log n</Em> (log₂ 1.000.000 ≈ 20).
+              Nhưng vì mục đích giới thiệu nên chúng ta không đi sâu vào phần tối ưu này .Các bạn có thể tự tìm hiểu thêm
             </p>
             <p style={{ fontSize: 21, color: 'var(--fog-400)', margin: 0, fontFamily: 'var(--font-mono)' }}>
-              cho ai tò mò tra cứu thêm: độ phức tạp khi đó ≈ O((n + E) log n)
+              Sử dụng min heap
             </p>
           </motion.div>
         )}

@@ -26,9 +26,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Trước khi chia tay, thử đặt cỗ máy vào một đồ thị lạ. Đồ thị này có một thứ ta quen
-          trên bản đồ thật: <Em>đường MỘT CHIỀU</Em> — mũi tên chỉ được đi theo chiều đó, như
-          phố một chiều.
+          Trước khi kết thúc thì còn 1 đặc điểm cần lưu ý về thuật toán này là nó chỉ được áp dụng với đồ thì mà <Em>trọng số các cạnh là dương</Em>.
         </>
       ),
     },
@@ -44,10 +42,9 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Và nếu "chi phí" không phải mét đường mà là <Em>TIỀN</Em>? Có đoạn được trợ giá — đi
-          qua còn được <Em color="var(--green)">NHẬN thêm</Em>: chi phí{' '}
-          <Em color="var(--green)">−4</Em> trên đoạn Z→Y. Đề bài cho cỗ máy:{' '}
-          <Em>tìm đường rẻ nhất X→Y</Em>.
+          Giả sử trọng số ở đây không phải là khoảng cách mà là <Em>lượng PIN tiêu thụ</Em> khi đi qua. Có đoạn không tốn PIN mà được <Em color="var(--green)">SẠC thêm</Em>
+          <Em color="var(--green)">4</Em> trên đoạn Z→Y. Bài toán bây giờ sẽ là :{' '}
+          <Em>tìm đường X→Y sao cho còn nhiều PIN nhất</Em>.
         </>
       ),
     },
@@ -64,9 +61,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Cho cỗ máy chạy: mở Y=2, Z=3 → quét min → Y bé nhất → <Em>CHỐT Y</Em>. Mà Y là
-          đích — đúng dòng <Em color="var(--cyan)">if min == end break</Em>: máy dừng, dõng
-          dạc trả lời <Em>2</Em>. Đúng từng chữ luật ta đặt ra.
+          Bản chất thuật toán này là nếu 1 đỉnh <Em>đang mở</Em> và có <Em>cost tạm thời ít nhất </Em>thì ta có thể chốt được <Em color="var(--green)">đường đi tốt nhất</Em> tới đỉnh này.
         </>
       ),
     },
@@ -86,10 +81,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'warn',
       text: (
         <>
-          Nhưng nhìn này: đi X→Z→Y tốn 3 + (−4) = <Em color="var(--red)">−1</Em> — rẻ hơn hẳn
-          2! Mà máy đã <Em>chốt-và-trả-lời mất rồi</Em>. Cả buổi ta tin "đã chốt thì không
-          bao giờ phải sửa" — lần này chính niềm tin ấy phản bội ta: cỗ máy trả lời{' '}
-          <Em color="var(--red)">sai</Em> — vỡ trận.
+          Nhưng trong trường hợp hiện tại ,ta lại có đường đi ngắn nhất là <Em color="var(--green)">X-Z-Y</Em>  với khoảng cách là <Em color="var(--red)">-1</Em> . <br></br>Nhưng ta đã chốt đường đi ngắn nhất là <Em color="var(--red)">2</Em> và không xét nhánh <Em color="var(--green)">X-Z</Em> .
         </>
       ),
     },
@@ -107,10 +99,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Vì sao gãy? Nhớ câu lập luận trong sương: <Em>"đi tiếp thì chỉ dài thêm chứ không
-          ngắn lại"</Em> — mọi lần CHỐT đều đứng trên câu đó. Cạnh âm phá đúng câu đó: đi
-          tiếp lại RẺ ĐI. Vậy điều kiện tiên quyết của thuật toán:{' '}
-          <Em color="var(--red)">không có cạnh âm</Em>.
+           Như vậy với cạnh có trọng số <Em color="var(--red)">ÂM</Em> thì thuật toán này <Em color="var(--red)">không còn đúng nữa</Em>
         </>
       ),
     },
