@@ -20,7 +20,7 @@ const press = async (key, times = 1) => {
   }
 }
 
-await page.goto('http://localhost:4173/')
+await page.goto('http://localhost:4173/?offline')
 await page.waitForTimeout(800)
 
 check('title không spoiler', (await page.title()) === 'Tìm đường ngắn nhất')
@@ -34,7 +34,7 @@ check('PREV về beat cuối slide trước (1 beat → beat 0)', hash() === '#s
 // Gate thật: FogWalk beat 3 (GATE 1).
 // Chú ý: GOTO/hash thẳng vào gate sẽ auto-resolve (bảo hiểm livestream),
 // nên phải đáp xuống beat 2 rồi NEXT tiến vào gate.
-await page.goto('http://localhost:4173/#s3-trong-suong.2')
+await page.goto('http://localhost:4173/?offline#s3-trong-suong.2')
 await page.reload()
 await page.waitForTimeout(1500)
 await press('ArrowRight') // vào gate beat 3 theo chiều tiến
@@ -56,7 +56,7 @@ await press('ArrowRight')
 check('click C resolve gate → NEXT đi tiếp', hash() === '#s3-trong-suong.4')
 
 // Refresh khôi phục
-await page.goto('http://localhost:4173/#s3-quy-luat.2')
+await page.goto('http://localhost:4173/?offline#s3-quy-luat.2')
 await page.reload()
 await page.waitForTimeout(800)
 check('refresh khôi phục #s3-quy-luat.2', hash() === '#s3-quy-luat.2')

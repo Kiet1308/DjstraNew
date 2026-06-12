@@ -23,7 +23,7 @@ const next = async (settle = 1100) => {
 const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png` })
 
 // ---- S1Title
-await page.goto('http://localhost:4173/#s1-mo-man.0')
+await page.goto('http://localhost:4173/?offline#s1-mo-man.0')
 await page.reload()
 await page.waitForTimeout(2400)
 await shot('title')

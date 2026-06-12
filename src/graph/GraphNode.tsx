@@ -190,6 +190,7 @@ export function GraphNode({
       {clickable && (
         <circle
           className="node-hit"
+          data-node={id}
           cx={x}
           cy={y}
           r={Math.max(48, size + 14)}

@@ -40,6 +40,12 @@ export type DeckState = {
   overviewOpen: boolean
 }
 
+/** Phần state điều hướng được đồng bộ qua phòng — KHÔNG gồm overviewOpen (cục bộ mỗi máy). */
+export type SharedNav = Pick<
+  DeckState,
+  'slideIndex' | 'beat' | 'direction' | 'resolvedGates' | 'nudge'
+>
+
 export type DeckAction =
   | { type: 'NEXT' }
   | { type: 'PREV' }
@@ -47,6 +53,19 @@ export type DeckAction =
   | { type: 'RESOLVE_GATE' }
   | { type: 'REARM_GATE' }
   | { type: 'SET_OVERVIEW'; open: boolean }
+  /** Ghi đè phần điều hướng bằng state từ host phòng (khách nhận qua mạng). */
+  | { type: 'SYNC'; shared: SharedNav }
+
+/** Action điều hướng chung cả phòng — khách chuyển cho host thay vì tự chạy. */
+export function isSharedAction(a: DeckAction): boolean {
+  return (
+    a.type === 'NEXT' ||
+    a.type === 'PREV' ||
+    a.type === 'GOTO' ||
+    a.type === 'RESOLVE_GATE' ||
+    a.type === 'REARM_GATE'
+  )
+}
 
 export function gateKey(slideId: string, beat: number) {
   return `${slideId}:${beat}`

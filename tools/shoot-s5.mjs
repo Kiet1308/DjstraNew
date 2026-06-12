@@ -21,7 +21,7 @@ const next = async (settle = 1600) => {
 }
 const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png` })
 
-await page.goto('http://localhost:4173/#s5-dem-buoc.0')
+await page.goto('http://localhost:4173/?offline#s5-dem-buoc.0')
 await page.reload()
 await page.waitForTimeout(1500)
 for (let b = 0; b < 7; b++) {

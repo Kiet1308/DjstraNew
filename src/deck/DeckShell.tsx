@@ -7,6 +7,7 @@ import { gateKey } from './types'
 import { ProgressHUD } from './ProgressHUD'
 import { OverviewMenu } from './OverviewMenu'
 import { useKeyboardNav } from './useKeyboardNav'
+import { RoomHUD } from '../room/RoomHUD'
 
 /**
  * Vỏ trình chiếu: Stage 1920×1080 + slide hiện tại (chuyển cảnh trượt ngang
@@ -53,6 +54,7 @@ export function DeckShell() {
         </motion.div>
       </AnimatePresence>
       <ProgressHUD />
+      <RoomHUD />
       <OverviewMenu />
     </Stage>
   )

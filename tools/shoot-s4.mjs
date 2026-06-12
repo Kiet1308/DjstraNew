@@ -26,7 +26,7 @@ const shot = (name) => page.screenshot({ path: `${OUT}/${name}.png` })
 const hash = () => new URL(page.url()).hash
 
 // ---- S4Morph: 3 beat "bỏ lớp trang trí" (morph map→abstract dời từ P3 về đây)
-await page.goto('http://localhost:5174/#s4-do-thi.0')
+await page.goto('http://localhost:5174/?offline#s4-do-thi.0')
 await page.reload()
 await page.waitForTimeout(2500)
 await shot('morph-0')
@@ -36,7 +36,7 @@ await next(2000) // morph 1.1s + decor tan
 await shot('morph-2')
 
 // ---- S4Build: đi hết toàn bộ beat, chụp mỗi beat
-await page.goto('http://localhost:5174/#s4-dung-may.0')
+await page.goto('http://localhost:5174/?offline#s4-dung-may.0')
 await page.reload()
 await page.waitForTimeout(2500)
 let b = 0
@@ -77,7 +77,7 @@ await shot('debug-end')
 console.log('debugger sau autoplay:', hash())
 
 // ---- Tua lùi 15 nhịp giữa S4Build xem wrap/typewriter đảo chiều
-await page.goto('http://localhost:5174/#s4-dung-may.27')
+await page.goto('http://localhost:5174/?offline#s4-dung-may.27')
 await page.reload()
 await page.waitForTimeout(2200)
 await shot('build-27-fresh')

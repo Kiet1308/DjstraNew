@@ -34,7 +34,7 @@ const click = async (id, settle = 1000) => {
 }
 
 // ---- S3LookFromB (5 beat — đã bỏ beat morph, morph dời sang S4)
-await page.goto('http://localhost:4173/#s3-nhin-tu-b.0')
+await page.goto('http://localhost:4173/?offline#s3-nhin-tu-b.0')
 await page.reload()
 await page.waitForTimeout(1800)
 for (let b = 0; b < 5; b++) {

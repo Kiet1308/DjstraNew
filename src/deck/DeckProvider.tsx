@@ -1,13 +1,22 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useReducer,
+  useRef,
   type Dispatch,
   type ReactNode,
 } from 'react'
-import { gateKey, type DeckAction, type DeckState, type SlideDef } from './types'
+import {
+  gateKey,
+  isSharedAction,
+  type DeckAction,
+  type DeckState,
+  type SlideDef,
+} from './types'
 import { slides } from './deck'
+import { useRoom } from '../room/RoomProvider'
 
 function isGate(slide: SlideDef, beat: number) {
   return slide.gateBeats?.includes(beat) ?? false
@@ -101,6 +110,9 @@ function reducer(state: DeckState, action: DeckAction): DeckState {
     }
     case 'SET_OVERVIEW':
       return state.overviewOpen === action.open ? state : { ...state, overviewOpen: action.open }
+    // Khách nhận state từ host phòng — ghi đè điều hướng, giữ overview cục bộ.
+    case 'SYNC':
+      return { ...state, ...action.shared }
   }
 }
 
@@ -131,7 +143,46 @@ const StateContext = createContext<DeckState | null>(null)
 const DispatchContext = createContext<Dispatch<DeckAction> | null>(null)
 
 export function DeckProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, undefined, stateFromHash)
+  const [state, rawDispatch] = useReducer(reducer, undefined, stateFromHash)
+  const room = useRoom()
+  const isGuest = room.state.phase === 'guest'
+  const isGuestRef = useRef(isGuest)
+  isGuestRef.current = isGuest
+
+  /**
+   * Trong phòng, host là chân lý: khách KHÔNG tự chạy action điều hướng mà
+   * gửi lên host; host chạy reducer rồi broadcast state về (SYNC bên dưới).
+   * Host và offline thì dispatch thẳng như cũ.
+   */
+  const dispatch = useCallback(
+    (a: DeckAction) => {
+      if (isGuestRef.current && isSharedAction(a)) {
+        room.sendAction(a)
+        // GOTO từ overview: đóng overview cục bộ ngay, không đợi host.
+        if (a.type === 'GOTO') rawDispatch({ type: 'SET_OVERVIEW', open: false })
+        return
+      }
+      rawDispatch(a)
+    },
+    [room.sendAction],
+  )
+
+  // Host: mỗi lần điều hướng đổi → đẩy state chung cho cả phòng.
+  const { slideIndex, beat, direction, resolvedGates, nudge } = state
+  useEffect(() => {
+    if (room.state.phase !== 'host') return
+    room.publishShared({ slideIndex, beat, direction, resolvedGates, nudge })
+  }, [room.state.phase, room.publishShared, slideIndex, beat, direction, resolvedGates, nudge])
+
+  // Nhận tin từ phòng: khách nhận SYNC, host nhận action của khách.
+  useEffect(
+    () =>
+      room.setDeckSink((m) => {
+        if (m.t === 'state') rawDispatch({ type: 'SYNC', shared: m.s })
+        else rawDispatch(m.a)
+      }),
+    [room.setDeckSink],
+  )
 
   useEffect(() => {
     const slide = slides[state.slideIndex]
@@ -149,7 +200,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  }, [dispatch])
 
   return (
     <StateContext.Provider value={state}>

@@ -12,6 +12,7 @@ import {
   type NodeVisualState,
 } from '../../graph/types'
 import { Callout } from '../../components/Callout'
+import { useRoom, useRoomEvent } from '../../room/RoomProvider'
 import { CalloutSlot, Em, mapScene, mergeScene, type CalloutDef, type ScenePatch } from './common'
 import { cutScene, finalScene } from './scenes'
 
@@ -559,7 +560,13 @@ function S3FogWalkSlide({ beat, direction, gateResolved, resolveGate, nudge }: S
   const gate = def.gate
   const [attempt, setAttempt] = useState<{ beat: number; node: NodeId } | null>(null)
 
-  // Phản ví dụ là state cục bộ: tự xóa, không lọt vào deck state
+  // Phản ví dụ không lọt vào deck state, nhưng lan ra cả phòng qua kênh
+  // event — người khác click sai thì màn hình ai cũng thấy "chưa chắc!".
+  const { emitEvent } = useRoom()
+  useRoomEvent<{ beat: number; node: NodeId }>('s3-attempt', (p) => {
+    if (p && typeof p.beat === 'number' && typeof p.node === 'string') setAttempt(p)
+  })
+
   useEffect(() => setAttempt(null), [beat])
   useEffect(() => {
     if (!attempt) return
@@ -585,7 +592,7 @@ function S3FogWalkSlide({ beat, direction, gateResolved, resolveGate, nudge }: S
       setAttempt(null)
       resolveGate()
     } else if (gate.counters[id]) {
-      setAttempt({ beat, node: id })
+      emitEvent('s3-attempt', { beat, node: id })
     }
   }
 

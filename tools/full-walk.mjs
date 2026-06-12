@@ -20,7 +20,7 @@ const GATE_ANSWERS = {
   '#s3-trong-suong.11': [1045, 240],
 }
 
-await page.goto('http://localhost:4173/#s1-mo-man.0')
+await page.goto('http://localhost:4173/?offline#s1-mo-man.0')
 await page.reload()
 await page.waitForTimeout(1500)
 
