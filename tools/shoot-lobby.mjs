@@ -1,7 +1,9 @@
 // Chụp các màn hình lobby để soát thiết kế. Chạy sau `npm run build`.
 import { preview } from 'vite'
 import { chromium } from 'playwright'
+import { startRoomServer } from './room-srv.mjs'
 
+const roomSrv = await startRoomServer()
 const server = await preview({ preview: { port: 4183 } })
 const base = 'http://localhost:4183'
 const browser = await chromium.launch()
@@ -42,4 +44,5 @@ await page.screenshot({ path: 'tools/shots/lobby-deck-pill.png' })
 
 await browser.close()
 await new Promise((r) => server.httpServer.close(r))
+roomSrv.kill()
 console.log('đã chụp 5 ảnh vào tools/shots/')

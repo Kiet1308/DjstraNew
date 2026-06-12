@@ -14,7 +14,8 @@ export function RoomHUD() {
 
   if (state.phase !== 'host' && state.phase !== 'guest') return null
 
-  const reconnecting = state.phase === 'guest' && state.link === 'reconnecting'
+  // Host lẫn khách đều có thể rớt dây tới server — cùng một toast.
+  const reconnecting = state.link === 'reconnecting'
   const code = state.code
 
   const copy = () => {

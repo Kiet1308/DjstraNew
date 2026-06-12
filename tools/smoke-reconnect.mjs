@@ -1,8 +1,10 @@
 // Nghiệm thu hồi phục: host lỡ REFRESH giữa buổi → mở lại đúng phòng cũ,
-// khách tự nối lại, vị trí slide giữ nguyên. CẦN MẠNG. Chạy sau `npm run build`.
+// khách tự nối lại, vị trí slide giữ nguyên. Chạy sau `npm run build`.
 import { preview } from 'vite'
 import { chromium } from 'playwright'
+import { startRoomServer } from './room-srv.mjs'
 
+const roomSrv = await startRoomServer()
 const server = await preview({ preview: { port: 4180 } })
 const base = 'http://localhost:4180'
 const browser = await chromium.launch()
@@ -80,6 +82,7 @@ try {
 } finally {
   await browser.close()
   await new Promise((r) => server.httpServer.close(r))
+  roomSrv.kill()
 }
 
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`)

@@ -8,24 +8,26 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { DataConnection, Peer } from 'peerjs'
 import type { DeckAction, SharedNav } from '../deck/types'
 import {
+  hostToken,
   isSharedNav,
   isValidCode,
-  peerIdOf,
   randomCode,
+  roomServerUrl,
   sanitizeRemoteAction,
   SESSION_CODE_KEY,
   SESSION_JOIN_KEY,
   type DeckSinkMsg,
+  type ServerMsg,
   type WireMsg,
 } from './protocol'
 
 /**
- * Phòng điều khiển chung qua PeerJS (WebRTC, broker công cộng — không cần
- * server riêng). Host giữ state chân lý; khách gửi action lên host, host
- * broadcast state về. Vào phòng = mã 6 số.
+ * Phòng điều khiển chung qua relay WebSocket TỰ HOST (server/room-server.mjs
+ * trên VPS, cùng origin — không bên trung gian). Host giữ state chân lý;
+ * khách gửi action, server chuyển cho host, host broadcast state về.
+ * Vào phòng = mã 6 số.
  */
 export type RoomState =
   | {
@@ -39,12 +41,15 @@ export type RoomState =
       code: string
       entered: boolean
       count: number
-      /** Mã cũ kẹt trên broker, phòng phải mở bằng mã MỚI — host cần được báo to. */
+      /** Mã cũ còn host sống giữ trên server, phòng phải mở bằng mã MỚI — báo to. */
       codeChanged: boolean
+      /** Rớt dây tới server — đang tự nối lại, khách tạm không nghe thấy mình. */
+      link: 'on' | 'reconnecting'
     }
   | {
       phase: 'guest'
       code: string
+      /** reconnecting = đứt dây HOẶC host vắng mặt — đều là "đang nối lại". */
       link: 'on' | 'reconnecting'
       count: number
       /** Host đã bấm bắt đầu chưa — chưa thì khách đứng ở màn chờ. */
@@ -63,7 +68,7 @@ type RoomApi = {
   clearError: () => void
   /** Khách chuyển action điều hướng lên host. */
   sendAction: (a: DeckAction) => void
-  /** Deck báo state điều hướng mới nhất — host broadcast cho cả phòng. */
+  /** Deck báo state điều hướng mới nhất — host phát cho cả phòng. */
   publishShared: (s: SharedNav) => void
   /** Deck đăng ký nhận tin từ phòng (SYNC cho khách, action cho host). */
   setDeckSink: (cb: (m: DeckSinkMsg) => void) => () => void
@@ -73,7 +78,7 @@ type RoomApi = {
 }
 
 const JOIN_TIMEOUT_MS = 14_000
-const REDIAL_WATCHDOG_MS = 10_000
+const DIAL_WATCHDOG_MS = 10_000
 const RETRY_SAME_CODE_MS = 1500
 const RECONNECT_EVERY_MS = 3000
 const HEARTBEAT_MS = 5000
@@ -86,6 +91,15 @@ function initialState(): RoomState {
   return { phase: 'lobby', pending: null, error: null }
 }
 
+function parseMsg(e: MessageEvent): ServerMsg | null {
+  try {
+    const m = JSON.parse(String(e.data)) as ServerMsg
+    return m && typeof m.t === 'string' ? m : null
+  } catch {
+    return null
+  }
+}
+
 const RoomContext = createContext<RoomApi | null>(null)
 
 export function RoomProvider({ children }: { children: ReactNode }) {
@@ -93,18 +107,14 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state)
   stateRef.current = state
 
-  const peerRef = useRef<Peer | null>(null)
-  const connsRef = useRef<Map<string, DataConnection>>(new Map()) // host: khách đang nối
-  const hostConnRef = useRef<DataConnection | null>(null) // khách: dây lên host
+  const wsRef = useRef<WebSocket | null>(null)
   const sharedRef = useRef<SharedNav | null>(null)
   const sinkRef = useRef<((m: DeckSinkMsg) => void) | null>(null)
   const eventsRef = useRef<Map<string, Set<(payload: unknown) => void>>>(new Map())
   const timersRef = useRef<number[]>([])
   const intervalsRef = useRef<number[]>([])
-  // Nhịp tim: lần cuối nghe thấy đầu dây bên kia (host: theo connectionId).
-  const lastSeenRef = useRef<Map<string, number>>(new Map())
-  // Khách chỉ giữ MỘT lịch quay số lại — conn close lẫn peer error cùng đòi
-  // retry thì cũng không được sinh hai vòng dial song song.
+  // Chỉ giữ MỘT lịch quay số lại — nhiều đường cùng đòi retry (đứt dây,
+  // watchdog, no-room) cũng không sinh hai vòng dial song song.
   const retryPendingRef = useRef(false)
   // Mỗi lần tạo/vào/rời phòng tăng gen — callback async cũ tự thấy mình hết hạn.
   const genRef = useRef(0)
@@ -123,11 +133,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     genRef.current++
     clearTimers()
     retryPendingRef.current = false
-    hostConnRef.current = null
-    connsRef.current.clear()
-    lastSeenRef.current.clear()
-    peerRef.current?.destroy()
-    peerRef.current = null
+    wsRef.current?.close()
+    wsRef.current = null
   }, [])
 
   useEffect(() => teardown, [teardown])
@@ -137,81 +144,119 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     if (handlers) for (const h of [...handlers]) h(payload)
   }, [])
 
-  const safeSend = (conn: DataConnection, msg: WireMsg) => {
+  const sendMsg = (
+    ws: WebSocket | null,
+    msg: WireMsg | { t: 'host'; code: string; token: string } | { t: 'join'; code: string },
+  ) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
     try {
-      conn.send(msg)
+      ws.send(JSON.stringify(msg))
     } catch {
-      /* dây vừa đứt — vòng reconnect/close tự xử lý */
+      /* dây vừa đứt — onclose tự xử lý */
     }
   }
 
-  const hostBroadcast = useCallback((msg: WireMsg, except?: string) => {
-    for (const [id, conn] of connsRef.current) {
-      if (id !== except) safeSend(conn, msg)
-    }
-  }, [])
-
-  const hostCount = () => connsRef.current.size + 1
+  /** Bắt mạch: server im quá lâu (proxy treo, mất mạng) → tự cắt cho onclose lo. */
+  const armHeartbeat = (ws: WebSocket, gen: number, touch: { last: number }) => {
+    const hb = window.setInterval(() => {
+      if (gen !== genRef.current || wsRef.current !== ws) {
+        window.clearInterval(hb)
+        return
+      }
+      if (Date.now() - touch.last > DEAD_AFTER_MS) {
+        ws.close()
+      } else {
+        sendMsg(ws, { t: 'ping' })
+      }
+    }, HEARTBEAT_MS)
+    intervalsRef.current.push(hb)
+  }
 
   /* ---------------- HOST ---------------- */
 
-  const wireGuestConn = useCallback(
-    (conn: DataConnection, gen: number) => {
-      let heartbeat = 0
-      const drop = () => {
-        window.clearInterval(heartbeat)
-        if (gen !== genRef.current) return
-        if (!connsRef.current.delete(conn.connectionId)) return
-        lastSeenRef.current.delete(conn.connectionId)
-        hostBroadcast({ t: 'count', n: hostCount() })
-        setState((s) => (s.phase === 'host' ? { ...s, count: hostCount() } : s))
-      }
-      conn.on('open', () => {
-        if (gen !== genRef.current) return conn.close()
-        connsRef.current.set(conn.connectionId, conn)
-        lastSeenRef.current.set(conn.connectionId, Date.now())
-        if (sharedRef.current) safeSend(conn, { t: 'state', s: sharedRef.current })
-        safeSend(conn, {
-          t: 'begun',
-          v: stateRef.current.phase === 'host' && stateRef.current.entered,
-        })
-        hostBroadcast({ t: 'count', n: hostCount() })
-        setState((s) => (s.phase === 'host' ? { ...s, count: hostCount() } : s))
-        // Khách tắt tab/mất mạng mà WebRTC im lặng → tự bắt mạch mà loại.
-        // (Chỉ arm sau khi conn open — ICE chậm không bị giết oan.)
-        heartbeat = window.setInterval(() => {
-          if (gen !== genRef.current || !connsRef.current.has(conn.connectionId)) {
-            window.clearInterval(heartbeat)
-            return
-          }
-          const seen = lastSeenRef.current.get(conn.connectionId) ?? 0
-          if (Date.now() - seen > DEAD_AFTER_MS) {
-            conn.close()
-            drop()
-          } else {
-            safeSend(conn, { t: 'ping' })
-          }
-        }, HEARTBEAT_MS)
-        intervalsRef.current.push(heartbeat)
-      })
-      conn.on('data', (raw) => {
-        if (gen !== genRef.current) return
-        lastSeenRef.current.set(conn.connectionId, Date.now())
-        const msg = raw as WireMsg
-        if (msg?.t === 'action') {
+  /** Dây host sau khi server xác nhận 'hosted' — dùng chung cho tạo mới lẫn nối lại. */
+  const wireHostSocket = useCallback(
+    (ws: WebSocket, code: string, gen: number, reclaim: () => void) => {
+      wsRef.current = ws
+      const touch = { last: Date.now() }
+      armHeartbeat(ws, gen, touch)
+      // Server có thể đang giữ cờ begun/state cũ (host vừa refresh) —
+      // host luôn tự xưng lại trạng thái thật của mình.
+      const entered = stateRef.current.phase === 'host' && stateRef.current.entered
+      sendMsg(ws, { t: 'begun', v: entered })
+      if (sharedRef.current) sendMsg(ws, { t: 'state', s: sharedRef.current })
+
+      ws.onmessage = (e) => {
+        if (gen !== genRef.current) return ws.close()
+        touch.last = Date.now()
+        const msg = parseMsg(e)
+        if (!msg) return
+        if (msg.t === 'action') {
           const a = sanitizeRemoteAction(msg.a)
           if (a) sinkRef.current?.({ t: 'action', a })
-        } else if (msg?.t === 'event' && typeof msg.name === 'string') {
+        } else if (msg.t === 'event' && typeof msg.name === 'string') {
           deliverEvent(msg.name, msg.payload)
-          hostBroadcast(msg, conn.connectionId)
-        } else if (msg?.t === 'ping') {
-          safeSend(conn, { t: 'pong' })
+        } else if (msg.t === 'count' && typeof msg.n === 'number') {
+          setState((s) => (s.phase === 'host' ? { ...s, count: msg.n } : s))
         }
-      })
-      conn.on('close', drop)
-      conn.on('error', drop)
+      }
+      ws.onclose = () => {
+        if (gen !== genRef.current || wsRef.current !== ws) return
+        setState((s) => (s.phase === 'host' ? { ...s, link: 'reconnecting' } : s))
+        reclaim()
+      }
+      void code
     },
-    [deliverEvent, hostBroadcast],
+    [deliverEvent],
+  )
+
+  /** Vòng nối lại của host: đòi lại đúng mã phòng cũ trên server. */
+  const hostReclaim = useCallback(
+    (code: string, gen: number) => {
+      const schedule = () => {
+        if (gen !== genRef.current || stateRef.current.phase !== 'host') return
+        if (retryPendingRef.current) return
+        retryPendingRef.current = true
+        later(RECONNECT_EVERY_MS, () => {
+          retryPendingRef.current = false
+          dial()
+        })
+      }
+      const dial = () => {
+        if (gen !== genRef.current || stateRef.current.phase !== 'host') return
+        const ws = new WebSocket(roomServerUrl())
+        let settled = false
+        later(DIAL_WATCHDOG_MS, () => {
+          if (!settled) ws.close()
+        })
+        ws.onopen = () => {
+          // Gen hết hạn (user đã rời/đổi phòng) → đóng ngay kẻo thành
+          // socket ma chiếm phòng trên server.
+          if (gen !== genRef.current) return ws.close()
+          sendMsg(ws, { t: 'host', code, token: hostToken() })
+        }
+        ws.onmessage = (e) => {
+          if (gen !== genRef.current) return ws.close()
+          const msg = parseMsg(e)
+          if (msg?.t === 'hosted') {
+            settled = true
+            setState((s) => (s.phase === 'host' ? { ...s, link: 'on' } : s))
+            wireHostSocket(ws, code, gen, () => hostReclaim(code, gen))
+          } else if (msg?.t === 'taken') {
+            // Mã đang bị host khác (token lạ) giữ — đợi rồi thử tiếp.
+            settled = true
+            ws.close()
+            schedule()
+          }
+        }
+        ws.onclose = () => {
+          if (gen !== genRef.current || settled) return
+          schedule()
+        }
+      }
+      schedule()
+    },
+    [wireHostSocket],
   )
 
   const createRoom = useCallback(() => {
@@ -225,12 +270,27 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     const attempt = (code: string, sameCodeTries: number, freshCodeTries: number) => {
       if (gen !== genRef.current) return
       setState({ phase: 'lobby', pending: { kind: 'create', code }, error: null })
-      void import('peerjs').then(({ Peer }) => {
-        if (gen !== genRef.current) return
-        const peer = new Peer(peerIdOf(code))
-        peerRef.current = peer
-        peer.on('open', () => {
-          if (gen !== genRef.current) return
+      const ws = new WebSocket(roomServerUrl())
+      let settled = false
+      const fail = (msg: string) => {
+        settled = true
+        ws.close()
+        setState({ phase: 'lobby', pending: null, error: { kind: 'create', msg } })
+      }
+      later(DIAL_WATCHDOG_MS, () => {
+        if (gen === genRef.current && !settled) {
+          fail('Không kết nối được — kiểm tra mạng rồi thử lại.')
+        }
+      })
+      ws.onopen = () => {
+        if (gen !== genRef.current) return ws.close()
+        sendMsg(ws, { t: 'host', code, token: hostToken() })
+      }
+      ws.onmessage = (e) => {
+        if (gen !== genRef.current) return ws.close()
+        const msg = parseMsg(e)
+        if (msg?.t === 'hosted') {
+          settled = true
           sessionStorage.setItem(SESSION_CODE_KEY, code)
           setState({
             phase: 'host',
@@ -239,174 +299,137 @@ export function RoomProvider({ children }: { children: ReactNode }) {
             count: 1,
             // Hứa "mở lại phòng cũ" mà mã lại khác → phải báo to cho host.
             codeChanged: storedCode !== null && code !== storedCode,
+            link: 'on',
           })
-        })
-        peer.on('connection', (conn) => wireGuestConn(conn, gen))
-        // Rớt dây tới broker (không ảnh hưởng khách đã nối) — nối lại để
-        // khách MỚI vẫn vào được phòng.
-        peer.on('disconnected', () => {
-          if (gen === genRef.current && !peer.destroyed) peer.reconnect()
-        })
-        peer.on('error', (err) => {
-          if (gen !== genRef.current) return
-          const type = (err as { type?: string }).type
-          if (type === 'unavailable-id') {
-            // Mã còn kẹt trên broker (vd. vừa refresh) — đợi rồi thử lại,
-            // hết kiên nhẫn thì đổi mã mới.
-            peer.destroy()
-            if (sameCodeTries > 0) {
-              later(RETRY_SAME_CODE_MS, () => attempt(code, sameCodeTries - 1, freshCodeTries))
-            } else if (freshCodeTries > 0) {
-              attempt(randomCode(), 0, freshCodeTries - 1)
-            } else {
-              setState({
-                phase: 'lobby',
-                pending: null,
-                error: { kind: 'create', msg: 'Không tạo được phòng — thử lại sau ít giây.' },
-              })
-            }
-          } else if (stateRef.current.phase !== 'host') {
-            peer.destroy()
+          wireHostSocket(ws, code, gen, () => hostReclaim(code, gen))
+        } else if (msg?.t === 'taken') {
+          // Mã đang có host sống giữ (vd. tab cũ chưa bị sweeper dọn) —
+          // đợi rồi thử lại, hết kiên nhẫn thì đổi mã mới.
+          settled = true
+          ws.close()
+          if (sameCodeTries > 0) {
+            later(RETRY_SAME_CODE_MS, () => attempt(code, sameCodeTries - 1, freshCodeTries))
+          } else if (freshCodeTries > 0) {
+            attempt(randomCode(), 0, freshCodeTries - 1)
+          } else {
             setState({
               phase: 'lobby',
               pending: null,
-              error: {
-                kind: 'create',
-                msg: 'Không kết nối được — kiểm tra mạng rồi thử lại.',
-              },
+              error: { kind: 'create', msg: 'Không tạo được phòng — thử lại sau ít giây.' },
             })
           }
-        })
-      })
+        }
+      }
+      ws.onclose = () => {
+        if (gen !== genRef.current || settled) return
+        fail('Không kết nối được — kiểm tra mạng rồi thử lại.')
+      }
     }
 
     attempt(firstCode, 3, 2)
-  }, [teardown, wireGuestConn])
+  }, [teardown, wireHostSocket, hostReclaim])
 
   /* ---------------- KHÁCH ---------------- */
 
-  const dialHost = useCallback(
+  const dialGuest = useCallback(
     (code: string, gen: number, reconnecting: boolean) => {
       if (gen !== genRef.current) return
-      void import('peerjs').then(({ Peer }) => {
+      const schedule = () => {
         if (gen !== genRef.current) return
-        peerRef.current?.destroy()
-        const peer = new Peer()
-        peerRef.current = peer
+        if (retryPendingRef.current) return
+        retryPendingRef.current = true
+        later(RECONNECT_EVERY_MS, () => {
+          retryPendingRef.current = false
+          dialGuest(code, gen, true)
+        })
+      }
+      const failJoin = (msg: string) => {
+        setState({ phase: 'lobby', pending: null, error: { kind: 'join', msg } })
+      }
 
-        const retry = () => {
-          if (gen !== genRef.current) return
-          if (stateRef.current.phase !== 'guest' && reconnecting) return
-          if (retryPendingRef.current) return
-          retryPendingRef.current = true
-          later(RECONNECT_EVERY_MS, () => {
-            retryPendingRef.current = false
-            dialHost(code, gen, true)
-          })
-        }
-        const failJoin = (msg: string) => {
-          peer.destroy()
-          setState({ phase: 'lobby', pending: null, error: { kind: 'join', msg } })
-        }
+      const ws = new WebSocket(roomServerUrl())
+      let joined = false
+      let settled = false // đã có kết cục (joined / fail / chủ động retry)
 
-        if (!reconnecting) {
-          later(JOIN_TIMEOUT_MS, () => {
-            if (gen !== genRef.current) return
-            if (stateRef.current.phase === 'lobby') {
-              failJoin('Kết nối quá lâu — kiểm tra mạng rồi thử lại.')
-            }
-          })
-        }
+      if (reconnecting) {
+        later(DIAL_WATCHDOG_MS, () => {
+          if (gen === genRef.current && !settled) ws.close()
+        })
+      } else {
+        later(JOIN_TIMEOUT_MS, () => {
+          if (gen !== genRef.current || settled) return
+          settled = true
+          ws.close()
+          failJoin('Kết nối quá lâu — kiểm tra mạng rồi thử lại.')
+        })
+      }
 
-        peer.on('open', () => {
-          if (gen !== genRef.current) return
-          const conn = peer.connect(peerIdOf(code), { reliable: true })
-          hostConnRef.current = conn
-          let lastSeen = Date.now()
-          let heartbeat = 0
-          let opened = false
-
-          // Host rớt/refresh — bám phòng chờ host quay lại (idempotent:
-          // close event lẫn heartbeat đều có thể gọi).
-          let degraded = false
-          const degrade = () => {
-            window.clearInterval(heartbeat)
-            if (degraded || gen !== genRef.current) return
-            degraded = true
-            setState((s) => (s.phase === 'guest' ? { ...s, link: 'reconnecting' } : s))
-            retry()
-          }
-
-          // Quay số lại có thể rơi vào "xác" đăng ký cũ của host trên broker:
-          // không error, không close, không gì cả. Watchdog tự đập đi gọi lại.
-          if (reconnecting) {
-            later(REDIAL_WATCHDOG_MS, () => {
-              if (gen !== genRef.current || opened) return
-              peer.destroy()
-              retry()
-            })
-          }
-
-          conn.on('open', () => {
-            if (gen !== genRef.current) return
-            opened = true
-            lastSeen = Date.now()
+      ws.onopen = () => {
+        if (gen !== genRef.current) return ws.close()
+        sendMsg(ws, { t: 'join', code })
+      }
+      const touch = { last: Date.now() }
+      ws.onmessage = (e) => {
+        if (gen !== genRef.current) return ws.close()
+        touch.last = Date.now()
+        const msg = parseMsg(e)
+        if (!msg) return
+        if (!joined) {
+          if (msg.t === 'joined') {
+            joined = true
+            settled = true
+            wsRef.current = ws
             sessionStorage.setItem(SESSION_JOIN_KEY, code)
-            // begun giữ nguyên qua lần nối lại — host sẽ gửi giá trị thật ngay.
-            setState((s) => ({
+            setState({
               phase: 'guest',
               code,
               link: 'on',
-              count: s.phase === 'guest' ? s.count : 2,
-              begun: s.phase === 'guest' ? s.begun : false,
-            }))
-            heartbeat = window.setInterval(() => {
-              if (gen !== genRef.current) {
-                window.clearInterval(heartbeat)
-                return
-              }
-              if (Date.now() - lastSeen > DEAD_AFTER_MS) {
-                conn.close()
-                degrade()
-              } else {
-                safeSend(conn, { t: 'ping' })
-              }
-            }, HEARTBEAT_MS)
-            intervalsRef.current.push(heartbeat)
-          })
-          conn.on('data', (raw) => {
-            if (gen !== genRef.current) return
-            lastSeen = Date.now()
-            const msg = raw as WireMsg
-            if (msg?.t === 'state' && isSharedNav(msg.s)) {
-              sinkRef.current?.({ t: 'state', s: msg.s })
-            } else if (msg?.t === 'count' && typeof msg.n === 'number') {
-              setState((s) => (s.phase === 'guest' ? { ...s, count: msg.n } : s))
-            } else if (msg?.t === 'begun') {
-              setState((s) => (s.phase === 'guest' ? { ...s, begun: msg.v === true } : s))
-            } else if (msg?.t === 'event' && typeof msg.name === 'string') {
-              deliverEvent(msg.name, msg.payload)
-            } else if (msg?.t === 'ping') {
-              safeSend(conn, { t: 'pong' })
+              count: typeof msg.count === 'number' ? msg.count : 2,
+              begun: msg.begun === true,
+            })
+            armHeartbeat(ws, gen, touch)
+          } else if (msg.t === 'no-room') {
+            settled = true
+            ws.close()
+            if (reconnecting) {
+              schedule() // host chưa quay lại — bám phòng chờ tiếp
+            } else {
+              failJoin(
+                `Không thấy phòng ${code}. Kiểm tra lại mã — hoặc nhờ người tạo phòng mở phòng rồi vào lại.`,
+              )
             }
-          })
-          conn.on('close', degrade)
-        })
-        peer.on('error', (err) => {
-          if (gen !== genRef.current) return
-          const type = (err as { type?: string }).type
-          if (reconnecting || stateRef.current.phase === 'guest') {
-            peer.destroy()
-            retry()
-          } else if (type === 'peer-unavailable') {
-            failJoin(
-              `Không thấy phòng ${code}. Kiểm tra lại mã — hoặc nhờ người tạo phòng mở phòng rồi vào lại.`,
-            )
-          } else {
-            failJoin('Không kết nối được — kiểm tra mạng rồi thử lại.')
           }
-        })
-      })
+          return
+        }
+        if (msg.t === 'state' && isSharedNav(msg.s)) {
+          sinkRef.current?.({ t: 'state', s: msg.s })
+        } else if (msg.t === 'count' && typeof msg.n === 'number') {
+          setState((s) => (s.phase === 'guest' ? { ...s, count: msg.n } : s))
+        } else if (msg.t === 'begun') {
+          setState((s) => (s.phase === 'guest' ? { ...s, begun: msg.v === true } : s))
+        } else if (msg.t === 'event' && typeof msg.name === 'string') {
+          deliverEvent(msg.name, msg.payload)
+        } else if (msg.t === 'host-gone') {
+          // Host vắng mặt nhưng dây tới server vẫn sống — chỉ đổi nhãn,
+          // KHÔNG quay số lại; server sẽ báo host-back.
+          setState((s) => (s.phase === 'guest' ? { ...s, link: 'reconnecting' } : s))
+        } else if (msg.t === 'host-back') {
+          setState((s) => (s.phase === 'guest' ? { ...s, link: 'on' } : s))
+        }
+      }
+      ws.onclose = () => {
+        if (gen !== genRef.current) return
+        if (joined) {
+          if (wsRef.current === ws) wsRef.current = null
+          setState((s) => (s.phase === 'guest' ? { ...s, link: 'reconnecting' } : s))
+          schedule()
+        } else if (reconnecting && !settled) {
+          schedule()
+        } else if (!settled) {
+          settled = true
+          failJoin('Không kết nối được — kiểm tra mạng rồi thử lại.')
+        }
+      }
     },
     [deliverEvent],
   )
@@ -417,9 +440,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       teardown()
       const gen = genRef.current
       setState({ phase: 'lobby', pending: { kind: 'join', code }, error: null })
-      dialHost(code, gen, false)
+      dialGuest(code, gen, false)
     },
-    [teardown, dialHost],
+    [teardown, dialGuest],
   )
 
   /* ---------------- API chung ---------------- */
@@ -436,23 +459,22 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const enterDeck = useCallback(() => {
     if (stateRef.current.phase !== 'host') return
-    hostBroadcast({ t: 'begun', v: true })
+    sendMsg(wsRef.current, { t: 'begun', v: true })
     setState((s) => (s.phase === 'host' ? { ...s, entered: true } : s))
-  }, [hostBroadcast])
+  }, [])
 
   const clearError = useCallback(() => {
     setState((s) => (s.phase === 'lobby' ? { ...s, error: null } : s))
   }, [])
 
   const sendAction = useCallback((a: DeckAction) => {
-    const conn = hostConnRef.current
-    if (conn?.open) safeSend(conn, { t: 'action', a })
+    if (stateRef.current.phase === 'guest') sendMsg(wsRef.current, { t: 'action', a })
   }, [])
 
   const publishShared = useCallback((s: SharedNav) => {
     sharedRef.current = s
-    if (stateRef.current.phase === 'host') hostBroadcast({ t: 'state', s })
-  }, [hostBroadcast])
+    if (stateRef.current.phase === 'host') sendMsg(wsRef.current, { t: 'state', s })
+  }, [])
 
   const setDeckSink = useCallback((cb: (m: DeckSinkMsg) => void) => {
     sinkRef.current = cb
@@ -464,14 +486,12 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const emitEvent = useCallback(
     (name: string, payload: unknown) => {
       deliverEvent(name, payload)
-      const msg: WireMsg = { t: 'event', name, payload }
       const phase = stateRef.current.phase
-      if (phase === 'host') hostBroadcast(msg)
-      else if (phase === 'guest' && hostConnRef.current?.open) {
-        safeSend(hostConnRef.current, msg)
+      if (phase === 'host' || phase === 'guest') {
+        sendMsg(wsRef.current, { t: 'event', name, payload })
       }
     },
-    [deliverEvent, hostBroadcast],
+    [deliverEvent],
   )
 
   const onEvent = useCallback((name: string, cb: (payload: unknown) => void) => {

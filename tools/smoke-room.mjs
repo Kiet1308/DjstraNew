@@ -1,9 +1,11 @@
 // Nghiệm thu phòng multiplayer — 2 trình duyệt vào chung phòng, điều khiển
-// chéo nhau. CẦN MẠNG (broker PeerJS công cộng). Chạy: node tools/smoke-room.mjs
+// chéo nhau qua room-server tự host. Chạy: node tools/smoke-room.mjs
 // Yêu cầu: đã `npm run build`.
 import { preview } from 'vite'
 import { chromium } from 'playwright'
+import { startRoomServer } from './room-srv.mjs'
 
+const roomSrv = await startRoomServer()
 const server = await preview({ preview: { port: 4179 } })
 const base = 'http://localhost:4179'
 const browser = await chromium.launch()
@@ -44,8 +46,11 @@ try {
   check('khách nối xong → màn chờ (không bị thả vào deck)', sawWaiting)
 
   // ---- Host thấy đủ người, bắt đầu chiếu → khách vào deck theo ----
-  await A.getByText('2 người trong phòng').waitFor({ timeout: 12000 })
-  check('host đếm 2 người', true)
+  const counted = await A.getByText('2 người trong phòng')
+    .waitFor({ timeout: 12000 })
+    .then(() => true)
+    .catch(() => false)
+  check('host đếm 2 người', counted)
   await A.getByText('Bắt đầu trình chiếu').click()
   check('host vào deck', await waitHash(A, '#s1-mo-man.0'))
   const waitingGone = await B.getByText('Chờ bắt đầu trình chiếu')
@@ -91,10 +96,12 @@ try {
   check('khách click C mở gate → host NEXT đi tiếp', await waitHash(B, '#s3-trong-suong.4'))
 
   // ---- Khách rớt → host vẫn chiếu bình thường, đếm lại 1 ----
-  // (phát hiện rớt qua ICE — có thể mất hơn chục giây)
   await ctxB.close()
-  await A.getByText('1 người').waitFor({ timeout: 30000 })
-  check('khách thoát → host đếm lại 1 người', true)
+  const recounted = await A.getByText('1 người')
+    .waitFor({ timeout: 30000 })
+    .then(() => true)
+    .catch(() => false)
+  check('khách thoát → host đếm lại 1 người', recounted)
   await A.keyboard.press('ArrowRight')
   check('host vẫn điều khiển được sau khi khách thoát', await waitHash(A, '#s3-trong-suong.5'))
 } catch (err) {
@@ -103,6 +110,7 @@ try {
 } finally {
   await browser.close()
   await new Promise((r) => server.httpServer.close(r))
+  roomSrv.kill()
 }
 
 console.log(failures === 0 ? '\nTẤT CẢ PASS' : `\n${failures} FAIL`)
