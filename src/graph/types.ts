@@ -75,8 +75,9 @@ export type GraphSceneState = {
   variant: 'map' | 'abstract'
   nodeStates: Record<NodeId, NodeVisualState>
   edgeStates: Record<string, EdgeVisualState>
-  /** Chip cost ở góc đỉnh. undefined = không có chip; null = chip ghost rỗng. */
-  costs?: Record<NodeId, number | null>
+  /** Chip cost ở góc đỉnh. undefined = không có chip; null = chip ghost rỗng;
+      '?' = chip ghost CÓ dấu hỏi (chưa biết, nhưng nói thẳng ra — vẫn TUYỆT ĐỐI KHÔNG ∞). */
+  costs?: Record<NodeId, number | '?' | null>
   /** Hiện trọng số trên các cạnh không bị ẩn. */
   weights?: boolean
   /** Chế độ sương: chỉ render quanh các đỉnh đã lộ — không góc nhìn thượng đế. */

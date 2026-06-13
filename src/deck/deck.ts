@@ -15,6 +15,7 @@ import { S2Pruning } from '../sections/s2-brute/S2Pruning'
 import { S2StillSlow } from '../sections/s2-brute/S2StillSlow'
 import { S3LookFromB } from '../sections/s3-reverse/S3LookFromB'
 import { S3Dependencies } from '../sections/s3-reverse/S3Dependencies'
+import { S3Reframe } from '../sections/s3-reverse/S3Reframe'
 import { S3FogWalk } from '../sections/s3-reverse/S3FogWalk'
 import { S3Invariant } from '../sections/s3-reverse/S3Invariant'
 import { S3Pseudocode } from '../sections/s3-reverse/S3Pseudocode'
@@ -36,6 +37,7 @@ export const slides: SlideDef[] = [
   S2StillSlow,
   S3LookFromB,
   S3Dependencies,
+  S3Reframe,
   S3FogWalk,
   S3Invariant,
   S3Pseudocode,

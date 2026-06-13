@@ -271,37 +271,20 @@ const BEATS = defineBeats<Beat>([
       ),
     },
   },
-  // b8 — Chuyển cảnh: sương phủ — vào vai người đứng ở A
-  {
-    scene: mapScene({
-      fog: { revealed: ['A'] },
-      nodeStates: { A: 'current' },
-      edgeStates: {},
-    }),
-    callout: {
-      tone: 'need',
-      text: (
-        <>
-          Để trả lời cho công bằng, tự đặt mình vào vai người đứng ở A —{' '}
-          <Em>chỉ biết những gì mắt mình thấy</Em>. Sương xuống.
-        </>
-      ),
-    },
-  },
+  // (Hết chuỗi phụ thuộc — "đổi bài toán" & sương xuống dời sang slide S3Reframe ngay sau.)
 ])
 
 function S3DependenciesSlide({ beat, direction }: SlideProps) {
   const def = BEATS.at(beat)
   // lùi beat = trạng thái lắng: mũi tên không replay stagger
   const scene = direction === 1 ? def.scene : stripDepDelays(def.scene)
-  const lastBeat = beat === BEATS.count - 1
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       {/* phố xá chỉ là nền rất mờ — câu chuyện do mũi tên kể; sương xuống thì tắt hẳn */}
       <CityDecorLayer
         layout={mapLayout}
         edges={cityGraph.edges}
-        opacity={lastBeat ? 0 : 0.22}
+        opacity={def.scene.fog ? 0 : 0.22}
       />
       <GraphView graph={cityGraph} scene={scene} />
       <CalloutSlot callout={def.callout} beatKey={beat} />

@@ -16,7 +16,8 @@ function toneFor(state: NodeVisualState): Tone {
 
 /**
  * Chip cost ở góc trên-phải của đỉnh.
- * value === null → chip ghost rỗng (chưa biết gì — TUYỆT ĐỐI KHÔNG ∞).
+ * value === null → chip ghost rỗng; value === '?' → chip ghost có dấu hỏi
+ * (cả hai đều nghĩa "chưa biết" — TUYỆT ĐỐI KHÔNG ∞).
  * Giá trị GIẢM → flash xanh: "tìm được đường ngắn hơn".
  */
 export function CostBadge({
@@ -29,14 +30,17 @@ export function CostBadge({
 }: {
   x: number
   y: number
-  value: number | null
+  value: number | '?' | null
   nodeState: Exclude<NodeVisualState, 'hidden'>
   /** flash theo KỊCH BẢN (scene-driven, rewind-an-toàn): worse = bị ghi đè xấu */
   flash?: 'worse' | 'better'
   size?: number
 }) {
-  const prevRef = useRef<number | null>(null)
-  const decreased = value !== null && prevRef.current !== null && value < prevRef.current
+  const prevRef = useRef<number | '?' | null>(null)
+  // "chưa biết" = chip ghost (rỗng hoặc dấu hỏi): nét đứt + màu xám, không theo tone đỉnh
+  const unknown = value === null || value === '?'
+  const decreased =
+    typeof value === 'number' && typeof prevRef.current === 'number' && value < prevRef.current
   useEffect(() => {
     prevRef.current = value
   }, [value])
@@ -50,7 +54,7 @@ export function CostBadge({
         : toneFor(nodeState)
   const pop = decreased || !!flash
   const text = value === null ? '' : String(value)
-  const chipW = value === null ? 34 : 24 + text.length * 14
+  const chipW = unknown ? 34 : 24 + text.length * 14
   const cx = x + size + 4
   const cy = y - size - 6
   // morph map↔abstract: badge phải TRƯỢT theo đỉnh (cùng tween 1.1s), không nhảy
@@ -79,11 +83,11 @@ export function CostBadge({
           height={38}
           rx={12}
           strokeWidth={2}
-          strokeDasharray={value === null ? '5 5' : undefined}
+          strokeDasharray={unknown ? '5 5' : undefined}
           initial={decreased ? { fill: '#143524', stroke: 'var(--green)' } : false}
           animate={{
-            fill: value === null ? 'var(--ink-2)' : tone.bg,
-            stroke: value === null ? 'var(--fog-500)' : tone.border,
+            fill: unknown ? 'var(--ink-2)' : tone.bg,
+            stroke: unknown ? 'var(--fog-500)' : tone.border,
           }}
           transition={{ duration: decreased ? 1.1 : 0.4, ease: 'easeOut' }}
         />
@@ -97,7 +101,7 @@ export function CostBadge({
             fontSize={22}
             fontWeight={700}
             initial={decreased ? { fill: 'var(--green)' } : false}
-            animate={{ fill: tone.text }}
+            animate={{ fill: unknown ? 'var(--fog-400)' : tone.text }}
             transition={{ duration: decreased ? 1.1 : 0.4, ease: 'easeOut' }}
           >
             {text}

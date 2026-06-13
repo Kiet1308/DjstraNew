@@ -42,11 +42,18 @@ for (let b = 0; b < 5; b++) {
   if (b < 4) await next(b === 0 ? 1800 : 1500) // đợi settle hết stagger
 }
 
-// ---- S3Dependencies (9 beat)
+// ---- S3Dependencies (8 beat — beat "sương xuống" dời sang S3Reframe)
 await next(1300)
-for (let b = 0; b < 9; b++) {
+for (let b = 0; b < 8; b++) {
   await shot(`deps-${b}`)
-  if (b < 8) await next(1300)
+  if (b < 7) await next(1300)
+}
+
+// ---- S3Reframe (3 beat — đổi bài toán + bảng A=0/"?", rồi sương xuống)
+await next(1300)
+for (let b = 0; b < 3; b++) {
+  await shot(`reframe-${b}`)
+  if (b < 2) await next(1300)
 }
 
 // ---- S3FogWalk (18 beat, gate tại 3/6/11)
@@ -101,13 +108,13 @@ for (let b = 0; b < 5; b++) {
 }
 
 // ---- Tua lùi xuyên suốt về đầu Phần 3 — bắt lỗi hình khi đảo chiều
-// tổng nhịp Phần 3: (5-1) + 1 + (9-1) + 1 + (18-1) + 1 + (3-1) + 1 + (5-1) + 1 = 39
-for (let i = 0; i < 39; i++) {
+// tổng nhịp Phần 3: (5-1)+1 + (8-1)+1 + (3-1)+1 + (18-1)+1 + (3-1)+1 + (5-1) = 41
+for (let i = 0; i < 41; i++) {
   await page.keyboard.press('ArrowLeft')
   await page.waitForTimeout(140)
 }
 await page.waitForTimeout(1200)
-console.log('sau khi lùi 38 nhịp:', hash())
+console.log('sau khi lùi 41 nhịp:', hash())
 await shot('rewind-landing')
 
 await browser.close()
