@@ -183,7 +183,7 @@ function buildTrace(): TraceFrame[] {
           vars: snapshotVars(cost, visited, prev, min),
           note: improved
             ? `Tìm được đường NGẮN HƠN đến ${nb} (qua ${min}) → sửa cost, sửa luôn Prev[${nb}] = ${min}.`
-            : `Mở điểm mới ${nb}: ghi cost ${newCost}, nhớ bước-ngay-trước Prev[${nb}] = ${min}.`,
+            : `Mở điểm mới ${nb}: ghi cost ${newCost}, nhớ điểm trước đó Prev[${nb}] = ${min}.`,
         })
       } else {
         frames.push({
@@ -202,10 +202,10 @@ function buildTrace(): TraceFrame[] {
     lineId: 'ret',
     scene: makeScene(cost, visited, END),
     vars: snapshotVars(cost, visited, prev, END),
-    note: 'Trả về Prev — tấm bản đồ "bước-ngay-trước" của mọi điểm đã thấy.',
+    note: 'Trả về Prev — bảng lưu điểm ngay trước của mỗi điểm đã thấy.',
   })
 
-  // 3 frame cuối: trace ngược Prev từ B — khép tròn tư duy ngược của Phần 3
+  // 3 frame cuối: trace ngược Prev từ B — quay lại cách nhìn ngược ở Phần 3
   const back: { node: NodeId; edge: string }[] = []
   let cur: NodeId = END
   while (prev[cur]) {
@@ -240,7 +240,7 @@ function buildTrace(): TraceFrame[] {
       pathNodes: [...pathNodesSoFar],
     }),
     vars: snapshotVars(cost, visited, prev, null),
-    note: 'Lật ngược danh sách vừa lần ra: A → C → E → B = 16. Tư duy ngược của Phần 3 — khép tròn.',
+    note: 'Lật ngược danh sách vừa lần ra: A → C → E → B = 16. Đúng với cách nhìn ngược ở Phần 3.',
   })
 
   return frames

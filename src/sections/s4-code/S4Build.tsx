@@ -14,7 +14,7 @@ function S4BuildSlide({ beat, direction }: SlideProps) {
 
 export const S4Build: SlideDef = {
   id: 's4-dung-may',
-  title: 'Dựng cỗ máy',
+  title: 'Dựng hàm',
   section: 4,
   beats: BUILD_SCRIPT.length,
   component: S4BuildSlide,

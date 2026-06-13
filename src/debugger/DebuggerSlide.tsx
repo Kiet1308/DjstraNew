@@ -151,7 +151,7 @@ function DebuggerSlideComponent({ beat, direction }: SlideProps) {
 
 export const S4Debugger: SlideDef = {
   id: 's4-chay-thu',
-  title: 'Cho máy chạy thật',
+  title: 'Chạy thử từng dòng',
   section: 4,
   beats: TRACE.length,
   component: DebuggerSlideComponent,

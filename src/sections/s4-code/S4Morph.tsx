@@ -50,9 +50,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Sương tan. Phương pháp đã tròn — giờ đến lượt <Em>MÁY</Em> làm theo. Nhưng máy không
-          có mắt: nó không thấy thành phố, không thấy phố xá đèn đường — nó chỉ làm việc được
-          với những gì ta <Em>ghi ra thành dữ liệu</Em> được.
+          Ta đã có quy tắc. Bây giờ chuyển nó thành thứ máy có thể làm theo:{' '}
+          <Em>dữ liệu</Em> và <Em>code</Em>.
         </>
       ),
     },
@@ -65,9 +64,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Mà nhìn lại cả hành trình xem — suy luận của ta có lúc nào đụng đến tên đường, nhà
-          cửa không? Không. Từ đầu đến cuối chỉ có <Em>các điểm</Em> và{' '}
-          <Em>các đoạn nối kèm chi phí</Em>. Mọi thứ còn lại chỉ là trang trí.
+          Máy không cần biết nhà cửa hay tên đường. Với thuật toán này, ta chỉ cần{' '}
+          <Em>các điểm</Em> và <Em>các đoạn nối kèm chi phí</Em>.
         </>
       ),
     },
@@ -80,9 +78,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Bỏ hết trang trí. Hình tối giản còn lại, dân lập trình gọi là <Em>ĐỒ THỊ</Em> — mỗi
-          điểm là một <Em>ĐỈNH</Em>, mỗi đoạn nối là một <Em>CẠNH</Em>. Tên gọi thôi — nó vẫn
-          là tấm bản đồ của ta.
+          Khi bỏ chi tiết bản đồ, ta còn lại <Em>ĐỒ THỊ</Em>: mỗi điểm là một <Em>ĐỈNH</Em>,
+          mỗi đoạn nối là một <Em>CẠNH</Em>. Đây chỉ là cách gọi trong lập trình.
         </>
       ),
     },

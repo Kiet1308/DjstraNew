@@ -22,8 +22,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Cả màn sương vừa rồi, gói lại chỉ còn <Em>MỘT động tác</Em> lặp đi lặp lại:{' '}
-          <Em>chốt điểm đang mở rẻ nhất</Em> → <Em>mở các điểm nối từ nó</Em> → lặp.
+          Tóm lại, ta chỉ lặp một thao tác: <Em>chốt điểm đang mở rẻ nhất</Em> →{' '}
+          <Em>mở các điểm nối từ nó</Em> → lặp.
         </>
       ),
     },
@@ -35,9 +35,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Và để ý món quà: dãy số chốt <Em>4 → 6 → 10 → 14 → 16</Em> chỉ có đi lên — không số
-          nào phải quay lại sửa. Đúng <Em>lời hứa đầu màn sương</Em>: mỗi bước xong hẳn một
-          điểm — <Em>không một bước lãng phí</Em>.
+          Dãy cost đã chốt là <Em>4 → 6 → 10 → 14 → 16</Em>. Không điểm nào đã chốt phải sửa
+          lại.
         </>
       ),
     },

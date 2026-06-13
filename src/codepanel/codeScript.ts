@@ -546,9 +546,9 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'need',
       text: t(
-        'Trong sương, mỗi điểm chỉ có ',
+        'Ở bước khám phá, mỗi điểm có ',
         em('3 tình trạng', 'var(--cyan)'),
-        ': chưa thấy — đang mở (có con số tạm) — đã chốt ✓. Máy chỉ cần nhớ đúng chừng đó: chưa thấy = ',
+        ': chưa thấy — đang mở (có con số tạm) — đã chốt ✓. Khi viết code, ta ghi lại đúng 3 trạng thái đó: chưa thấy = ',
         em('Cost == null'),
         ' · đang mở = ',
         em('Cost ≠ null'),
@@ -580,10 +580,10 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       tone: 'need',
       text: t(
         'Và cách ghi chép: coi như mỗi điểm có một ',
-        em('ngăn tủ mang tên nó'),
+        em('ô trong bảng Cost'),
         ' — ',
         em('Cost["C"] = 4', 'var(--cyan)'),
-        ' đọc là "ngăn C của tủ Cost đang ghi số 4".',
+        ' đọc là "ô C trong bảng Cost đang ghi số 4".',
       ),
     },
     graphScene: scThreeStates,
@@ -597,8 +597,8 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       tone: 'need',
       text: t(
         'Bắt tay. Ta cần một ',
-        em('cỗ máy'),
-        ': đưa vào bản đồ, điểm xuất phát, điểm đích — nhận về độ dài đường ngắn nhất.',
+        em('hàm'),
+        ': nhận bản đồ, điểm xuất phát, điểm đích — trả về độ dài đường ngắn nhất.',
       ),
     },
     { ops: [{ op: 'insert', afterId: null, lines: [fnOpen, fnClose] }], highlight: ['fn-open'] },
@@ -614,7 +614,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
         em('cost tốt nhất đã biết', 'var(--cyan)'),
         ' của từng điểm, và điểm nào ',
         em('đã chốt'),
-        '. Mỗi thứ một tủ.',
+        '. Mỗi thứ một bảng.',
       ),
     },
     {
@@ -629,9 +629,9 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     {
       tone: 'insight',
       text: t(
-        'Mọi tủ đang rỗng — trừ một điều ta chắc từ đầu: "đường ngắn nhất từ A đến A ',
-        em('bằng 0, khỏi nghĩ'),
-        '". Cả phát hiện hôm trước nằm gọn trong một dòng.',
+        'Các bảng đang rỗng — trừ một điều ta biết ngay: đường ngắn nhất từ A đến A ',
+        em('bằng 0'),
+        '. Cả phát hiện hôm trước nằm gọn trong một dòng.',
       ),
     },
     { ops: [{ op: 'insert', afterId: 'vis-decl', lines: [startZero] }], highlight: ['start-zero'] },
@@ -645,7 +645,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       text: t(
         'Câu ③ bảo ',
         em('lặp'),
-        '. Lặp đến bao giờ? Chưa cần nghĩ vội — cứ lặp đã, dán tạm 2 mảnh giấy nhớ chỗ sẽ dừng.',
+        '. Lặp đến bao giờ? Ta đặt tạm 2 điều kiện dừng, rồi lát nữa thay bằng code thật.',
       ),
     },
     {
@@ -662,11 +662,9 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       text: t(
         'Vào việc chính — câu ①: "chọn điểm đang mở có cost ',
         em('bé nhất'),
-        '". Muốn biết bao giờ dừng thì phải ',
-        em('thử chọn trước đã'),
-        ' — nên việc chọn đứng TRÊN hai mảnh giấy. Máy không có mắt nhìn cả bàn cờ: nó ',
+        '". Muốn biết bao giờ dừng thì phải chọn trước đã. Máy sẽ ',
         em('duyệt từng điểm một', 'var(--cyan)'),
-        ', nuôi một "quán quân tạm thời" tên là min.',
+        ' và giữ ứng viên nhỏ nhất hiện tại trong biến min.',
       ),
     },
     {
@@ -695,7 +693,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     {
       tone: 'need',
       text: t(
-        'Gặp ứng viên hợp lệ thì so: ai bé hơn "quán quân tạm thời" thì lên thay. Ba điểm đang mở: ',
+        'Gặp ứng viên hợp lệ thì so với min hiện tại; nhỏ hơn thì cập nhật min. Ba điểm đang mở: ',
         em('6 < 10 < 16', 'var(--cyan)'),
         ' — G thắng.',
       ),
@@ -712,9 +710,9 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     {
       tone: 'insight',
       text: t(
-        'Trả nợ mảnh giấy thứ nhất: "chốt hết" nghĩa là gì? Là quét xong một lượt mà ',
+        'Điều kiện dừng thứ nhất: quét xong một lượt mà ',
         em('chẳng chọn nổi điểm nào'),
-        ' — min vẫn null. Mảnh giấy hóa thành code thật.',
+        ' — tức là min vẫn null.',
       ),
     },
     {
@@ -729,7 +727,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     {
       tone: 'insight',
       text: t(
-        'Mảnh giấy thứ hai. Nhớ lúc ',
+        'Điều kiện dừng thứ hai. Nhớ lúc ',
         em('thấy B=16 mà chưa dám dừng', 'var(--cyan)'),
         ' không? Chính là dòng này: chỉ dừng khi đích ',
         em('được CHỐT'),
@@ -747,7 +745,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
   ...need(
     {
       tone: 'need',
-      text: t('min sống sót qua hai cửa break — nó chính là điểm được chốt. ', em('Đóng dấu ✓.')),
+      text: t('Nếu không dừng ở hai điều kiện trên, min chính là điểm cần chốt. ', em('Đóng dấu ✓.')),
     },
     { ops: [{ op: 'insert', afterId: 'break-found', lines: [lock] }], highlight: ['lock'] },
     { pseudoStep: 2, graphScene: scLockG },
@@ -776,9 +774,9 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       text: t(
         'Mở một điểm là ghi cho nó con số tạm: ',
         em('cost của min + chi phí đoạn nối', 'var(--cyan)'),
-        '. Chi phí đoạn nối thì tra bảng hai nhịp: map[C] ra danh sách, hỏi tiếp ngăn D ra 12 — viết liền là ',
+        '. Chi phí đoạn nối lấy từ map. Ví dụ từ C sang D là ',
         em('map[C][D] = 12', 'var(--cyan)'),
-        '. Y phép cộng trong sương: 4+12=16.',
+        '. Đúng phép cộng lúc nãy: 4+12=16.',
       ),
     },
     { ops: [{ op: 'insert', afterId: 'nb-open', lines: [newCost] }], highlight: ['newcost'] },
@@ -787,7 +785,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
 
   // ---- ghi cost (ngây thơ)
   {
-    callout: { tone: 'need', text: t('Rồi ghi vào ngăn tủ của nó.') },
+    callout: { tone: 'need', text: t('Tạm ghi cost mới cho điểm kề.') },
     ops: [{ op: 'insert', afterId: 'newcost', lines: [setCost] }],
     highlight: ['setcost'],
   },
@@ -801,9 +799,9 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       text: t(
         'Dòng vừa viết có ',
         em('kẽ hở', 'var(--red)'),
-        '. Tua máy đến lúc chốt D — B đang giữ số đẹp: ',
+        '. Tua đến lúc chốt D — B đang có cost ',
         em('16', 'var(--cyan)'),
-        ', qua lối sáng kia.',
+        ' theo đường tốt hơn.',
       ),
     },
     graphScene: scNaiveSetup,
@@ -820,10 +818,10 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'warn',
       text: t(
-        'Dòng của ta ',
-        em('ghi đè không hỏi han', 'var(--red)'),
-        '. Con đường 16 — ',
-        em('bay màu', 'var(--red)'),
+        'Dòng này ',
+        em('ghi đè luôn', 'var(--red)'),
+        ': cost 16 của B bị đổi thành ',
+        em('20', 'var(--red)'),
         '.',
       ),
     },
@@ -837,7 +835,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       text: t(
         'Hỏng: máy trả lời ',
         em('20 ✗', 'var(--red)'),
-        '. Vậy luật ghi tủ: chỉ được ghi khi ',
+        '. Vậy luật ghi cost phải là: chỉ ghi khi ',
         em('tốt hơn'),
         '.',
       ),
@@ -848,11 +846,9 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'need',
       text: t(
-        'Còn ngăn ',
+        'Còn ô ',
         em('TRỐNG', 'var(--cyan)'),
-        '? Trống = chưa từng thấy — lần đầu thì cứ ghi. So "nhỏ hơn" với cái-chưa-có là vô nghĩa, nên hỏi ',
-        em('trống?', 'var(--cyan)'),
-        ' trước.',
+        '? Trống nghĩa là chưa từng thấy — lần đầu gặp thì cứ ghi. Nếu đã có số thì chỉ ghi khi newCost nhỏ hơn.',
       ),
     },
     highlight: ['setcost'],
@@ -869,7 +865,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
         em('nhỏ hơn', 'var(--cyan)'),
         ' — mới được ghi. Chạy lại đúng tình huống vừa nãy: 20 > 16 → ',
         em('giữ nguyên'),
-        '. Con đường 16 sống sót.',
+        '. Cost 16 được giữ nguyên.',
       ),
     },
     {
@@ -894,8 +890,8 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'insight',
       text: t(
-        'Câu hỏi xét nét: lỡ nó "mở ngược" về A thì sao? Tính thử: 4+4=8 — chẳng nhỏ hơn 0. ',
-        em('Điều kiện vừa viết lo hết'),
+        'Kiểm tra trường hợp quay ngược về A: 4+4=8 — không nhỏ hơn 0. ',
+        em('Điều kiện vừa viết sẽ bỏ qua'),
         '. Không cần thêm dòng nào.',
       ),
     },
@@ -908,7 +904,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     {
       tone: 'need',
       text: t(
-        'Vòng lặp dừng nghĩa là đích đã chốt. Câu hỏi ban đầu — "độ dài ngắn nhất đến end?" — đáp án nằm sẵn trong ngăn tủ.',
+        'Vòng lặp dừng nghĩa là đích đã chốt. Câu hỏi ban đầu — "độ dài ngắn nhất đến end?" — đáp án nằm trong Cost[end].',
       ),
     },
     { ops: [{ op: 'insert', afterId: 'loop-close', lines: [ret] }], highlight: ['ret'] },
@@ -922,7 +918,7 @@ export const BUILD_SCRIPT: CodeBeat[] = [
       tone: 'insight',
       text: t(
         'Nhìn lại cả trang: 25 dòng — mà thực chất chỉ là ',
-        em('3 câu ta nói trong sương'),
+        em('3 câu ở slide trước'),
         '. Code không phát minh điều gì mới; nó chép lại suy luận.',
       ),
     },
@@ -973,11 +969,11 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'warn',
       text: t(
-        'Cỗ máy chạy ngon… nhưng nó trả về ',
+        'Hàm đã trả đúng ',
         em('con số 16'),
-        ' — chứ chưa trả về ',
+        ', nhưng chưa trả về ',
         em('con đường', 'var(--cyan)'),
-        '. Nhìn bản đồ mà xem: toàn giá tiền, ',
+        '. Nhìn bản đồ mà xem: toàn cost, ',
         em('không một lối đi nào được thắp sáng', 'var(--red)'),
         '.',
       ),
@@ -989,9 +985,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'need',
       text: t(
-        'Đứng ở B nhìn lại: ba cửa dẫn vào — ',
-        em('chẳng cửa nào ghi dấu', 'var(--cyan)'),
-        ' "đường ngắn nhất đi lối này".',
+        'B có 3 đường đi vào, nhưng ta chưa biết đường ngắn nhất đi qua đường nào.',
       ),
     },
     graphScene: scThreeDoors,
@@ -1024,7 +1018,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
       text: t(
         'Bản đồ thật ',
         em('nghìn điểm', 'var(--red)'),
-        ': mỗi ngăn tủ nhét cả một đoàn tàu tên.',
+        ': mỗi ô phải lưu một danh sách rất dài, rất tốn bộ nhớ.',
       ),
     },
     aside: 'pathExplode',
@@ -1038,10 +1032,8 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'insight',
       text: t(
-        'Nhìn lên đồ thị: lộ trình của E và của B chung ',
-        em('HỆT đoạn đầu', 'var(--cyan)'),
-        ' — khác đúng ',
-        em('BƯỚC CUỐI'),
+        'Nhìn lên đồ thị: lộ trình của E và của B chung phần đầu, chỉ khác ',
+        em('bước cuối'),
         '.',
       ),
     },
@@ -1054,7 +1046,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
       text: t(
         'Vậy mỗi điểm chỉ cần nhớ đúng ',
         em('MỘT điều'),
-        ': "tôi đến từ đâu?". Đặt tên ngăn tủ mới: ',
+        ': điểm ngay trước nó là điểm nào. Đặt tên bảng mới: ',
         em('Prev'),
         ' — "bước ngay trước".',
       ),
@@ -1066,9 +1058,8 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'insight',
       text: t(
-        'Mỗi điểm một mũi tên — cả bản đồ hóa thành ',
-        em('cây mũi tên chỉ về nhà', 'var(--green)'),
-        '. Muốn cả con đường? Lần ngược là ra.',
+        'Mỗi điểm có một mũi tên về điểm đứng ngay trước nó. Muốn lấy cả con đường thì lần ',
+        'ngược từ đích.',
       ),
     },
     graphScene: scPrevTree,
@@ -1076,7 +1067,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
 
   /* ===== Màn 4 — Code hóa: Prev ghi ĐÚNG chỗ ghi cost ===== */
   ...need(
-    { tone: 'need', text: t('Thêm một ngăn tủ cho "bước ngay trước".') },
+    { tone: 'need', text: t('Thêm một bảng cho "bước ngay trước".') },
     {
       ops: [{ op: 'insert', afterId: 'vis-decl', lines: [prevDecl] }],
       highlight: ['prev-decl'],
@@ -1087,7 +1078,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
       tone: 'need',
       text: t(
         'Ghi Prev lúc nào? Xem lại một lần ghi cost: chốt C, mở D — mũi tên ',
-        em('"tôi đến từ đây"', 'var(--cyan)'),
+        em('"điểm trước đó"', 'var(--cyan)'),
         ' cắm theo.',
       ),
     },
@@ -1098,10 +1089,10 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'insight',
       text: t(
-        'Tìm được đường ngắn hơn → cost đổi chủ → mũi tên ',
-        em('XOAY theo', 'var(--green)'),
+        'Khi cost được cập nhật, Prev cũng phải ',
+        em('cập nhật theo', 'var(--green)'),
         ' (D: từ C sang E!). ',
-        em('Cùng một khoảnh khắc'),
+        em('Cùng một lúc'),
         ' — nên cùng một chỗ trong code.',
       ),
     },
@@ -1121,9 +1112,9 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'insight',
       text: t(
-        'Và đổi câu trả lời: thay vì một con số, trả về cả ',
-        em('tấm bản đồ-bước-ngược'),
-        ' — ai cần đường nào, lần ngược ra đường đó.',
+        'Và đổi câu trả lời: trả về bảng ',
+        em('Prev'),
+        ' — cần đường nào thì lần ngược từ đích.',
       ),
     },
     // comment ngắn — panel hẹp 600px của màn visual phải đọc trọn dòng
@@ -1137,7 +1128,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
   {
     callout: {
       tone: 'need',
-      text: t('Chạy thử phép lần ngược. Hỏi B: "trước mày là ai?" — ', em('E'), '.'),
+      text: t('Chạy thử phép lần ngược. Trước B là điểm nào? ', em('E'), '.'),
     },
     graphScene: scTraceB,
   },
@@ -1163,7 +1154,7 @@ export const PREV_SCRIPT: CodeBeat[] = [
         em('A → C → E → B = 16'),
         '. Bài toán hỏi xuôi — ta trả lời bằng cách ',
         em('lần ngược', 'var(--cyan)'),
-        ': đúng kiểu nghĩ đã sinh ra cả phương pháp. Khép tròn.',
+        ': đúng với cách nhìn ngược ở Phần 3.',
       ),
     },
     graphScene: scFull,
@@ -1172,9 +1163,9 @@ export const PREV_SCRIPT: CodeBeat[] = [
     callout: {
       tone: 'insight',
       text: t(
-        'Xong phần xây. Tiếp theo: cho cỗ máy ',
-        em('chạy thật', 'var(--cyan)'),
-        ' — từng dòng, từng nhịp, soi từng ngăn tủ.',
+        'Xong phần xây. Tiếp theo: cho hàm ',
+        em('chạy thử', 'var(--cyan)'),
+        ' — từng dòng, từng bước, xem các bảng thay đổi ra sao.',
       ),
     },
     graphScene: scFull,

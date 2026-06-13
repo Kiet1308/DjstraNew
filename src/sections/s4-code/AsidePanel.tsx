@@ -113,7 +113,7 @@ function CostCabinet() {
         transition={{ delay: 1.2 }}
         style={{ color: 'var(--fog-500)', fontSize: 20, marginTop: 12 }}
       >
-        Cost["C"] = 4 — mở ngăn C, thấy số 4
+        Cost["C"] = 4 — ô C đang ghi số 4
       </motion.div>
     </div>
   )
@@ -207,14 +207,14 @@ function PathRows({ stage }: { stage: 'seed' | 'grow' | 'waste' }) {
           transition={{ delay: 0.5 }}
           style={{ color: 'var(--red)', fontSize: 20 }}
         >
-          ↑ chép lại y nguyên — điểm nào cũng thế thì thừa chồng thừa
+          ↑ phần đầu bị chép lại nhiều lần
         </motion.div>
       )}
     </div>
   )
 }
 
-/** Bản đồ THẬT nghìn điểm: mỗi ngăn Path nhét cả đoàn tàu tên — tràn khung. */
+/** Bản đồ lớn: mỗi ô Path lưu cả danh sách đường đi — tràn khung. */
 const EXPLODE_ROWS = [
   { key: 'X₄₂', steps: 9 },
   { key: 'X₁₈₇', steps: 12 },
@@ -244,7 +244,7 @@ function PathExplode() {
         transition={{ delay: 1.7 }}
         style={{ color: 'var(--red)', fontSize: 20 }}
       >
-        … × 1.000 điểm — ngăn nào cũng một đoàn tàu tên, dài mãi ra
+        … × 1.000 điểm — mỗi ô lưu một danh sách dài, rất tốn bộ nhớ
       </motion.div>
     </div>
   )

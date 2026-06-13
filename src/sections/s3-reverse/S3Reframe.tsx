@@ -88,9 +88,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Xây từ A lan ra — nhưng xây ra cái gì? Là ngắn nhất từ A tới <Em>TỪNG điểm</Em>. Vậy{' '}
-          <Em>đổi luôn bài toán</Em>: điền đáp số cho <Em color="var(--cyan)">mọi điểm</Em>,
-          không riêng B. Mới chắc mỗi <Em>A = 0</Em>.
+          Từ A, ta sẽ không chỉ tìm riêng B nữa. Ta ghi đường ngắn nhất từ A đến{' '}
+          <Em>từng điểm</Em>; khi điền tới B thì có đáp án. Lúc đầu chỉ chắc mỗi <Em>A = 0</Em>.
         </>
       ),
     },
@@ -104,9 +103,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Tưởng nhiều việc hơn, hóa ra <Em>nhẹ đầu hơn</Em>: mỗi bước chỉ cần biến{' '}
-          <Em>một "?" thành số thật</Em>, bắt đầu từ <Em>A = 0</Em>. Đích B giờ chỉ là{' '}
-          <Em color="var(--cyan)">một ô</Em> trong bảng — điền tới đó là xong.
+          Cách này có vẻ rộng hơn, nhưng dễ làm từng bước: mỗi lần biến <Em>một "?"</Em> thành
+          một số chắc chắn. B chỉ là một ô trong bảng — điền tới đó là xong.
         </>
       ),
     },
@@ -123,8 +121,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Bảng to toàn dấu hỏi, trong tay đúng một con số. Giờ vào vai người đứng ở A —{' '}
-          <Em>chỉ biết những gì mắt thấy</Em>. Sương xuống.
+          Bảng còn toàn dấu hỏi, trong tay chỉ có A=0. Ta che phần chưa khám phá lại và bắt đầu
+          từ những gì đang thấy.
         </>
       ),
     },

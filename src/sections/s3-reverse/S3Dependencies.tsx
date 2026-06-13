@@ -68,8 +68,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Mũi tên tím đọc là <Em>"cần biết trước"</Em>: muốn tốt nhất đến B — cần tốt nhất đến
-          D, E, F trước đã.
+          Mũi tên tím nghĩa là <Em>"cần biết trước"</Em>: muốn biết B, ta phải biết D, E, F
+          trước.
         </>
       ),
     },
@@ -94,9 +94,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Thử hỏi sâu một cửa — <Em>D</Em>. Tốt nhất đến D? Câu hỏi y hệt lúc ở B: bước cuối
-          cùng VÀO D — từ <Em>A</Em>, từ <Em>C</Em>, hay từ <Em>E</Em>? Vậy lại cần tốt nhất
-          đến A, C, E trước đã.
+          Thử với <Em>D</Em>: bước cuối vào D có thể đến từ <Em>A</Em>, <Em>C</Em> hoặc{' '}
+          <Em>E</Em>. Vậy muốn biết D, ta lại phải biết A, C, E trước.
         </>
       ),
     },
@@ -147,8 +146,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Mà tốt nhất đến G? Bước cuối vào G — từ <Em>A</Em>. Nhánh này lùi hai bước là về tới{' '}
-          <Em>A</Em>.
+          Mà tốt nhất đến G? Bước cuối vào G là từ <Em>A</Em>. Nhánh này đã chạm về A.
         </>
       ),
     },
@@ -173,8 +171,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Hai điểm còn lại cũng không khác: E cần C, C cần A. Quy luật lộ ra: tốt nhất đến{' '}
-          <Em>MỘT</Em> điểm luôn cần tốt nhất đến <Em>các điểm ngay trước nó</Em>.
+          Hai điểm còn lại cũng tương tự: E cần C, C cần A. Nhận xét: muốn biết đường tốt nhất
+          đến một điểm, ta cần biết đường tốt nhất đến <Em>các điểm ngay trước nó</Em>.
         </>
       ),
     },
@@ -201,9 +199,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Giờ lùi ra nhìn cả tấm bản đồ: câu hỏi đẻ ra câu hỏi — nhưng mũi tên nào cũng chĩa về{' '}
-          <Em>cùng một phía</Em>. Chuỗi câu hỏi nào, lần ngược mãi, cũng đổ về đúng một điểm:{' '}
-          <Em>A</Em>.
+          Mỗi câu hỏi lại kéo theo vài câu hỏi khác. Nhưng đi ngược mãi thì các mũi tên đều quay
+          về cùng một điểm: <Em>A</Em>.
         </>
       ),
     },
@@ -229,8 +226,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Mà riêng A — "đường ngắn nhất từ A đến A"? <Em>Bằng 0. Có sẵn, khỏi nghĩ.</Em> Cả bản
-          đồ đang nợ câu trả lời — chỉ duy nhất A là trả lời được ngay từ đầu.
+          Riêng A thì ta biết ngay: đường ngắn nhất từ A đến A bằng <Em>0</Em>. Cả bản đồ còn
+          chưa có đáp án — chỉ A là có sẵn từ đầu.
         </>
       ),
     },
@@ -263,10 +260,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Vậy lật ngược lại: phía B toàn câu hỏi nợ nhau — phía A có sẵn câu trả lời. Đứng ở A,{' '}
-          <Em>XÂY câu trả lời lan dần ra</Em>. Mũi tên lật theo, giờ đọc xuôi:{' '}
-          <Em color="var(--violet)">"A đã chắc — lan sang các điểm nối với nó"</Em>. Điểm nào
-          chắc chắn <Em>TIẾP</Em>?
+          Vậy ta làm ngược lại: từ A đã biết cost 0, ta <Em>xây dần câu trả lời</Em> ra các
+          điểm xung quanh. Điểm nào có thể chắc chắn tiếp?
         </>
       ),
     },

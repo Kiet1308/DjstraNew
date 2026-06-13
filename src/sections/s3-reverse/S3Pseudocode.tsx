@@ -76,7 +76,7 @@ function S3PseudocodeSlide({ beat }: SlideProps) {
             marginBottom: 14,
           }}
         >
-          Ý tưởng đã tròn
+          Chốt lại ý tưởng
         </div>
         <h1 style={{ fontSize: 56, fontWeight: 800, margin: 0 }}>
           Phát biểu thành lời — đúng 3 câu
@@ -135,8 +135,8 @@ function S3PseudocodeSlide({ beat }: SlideProps) {
             transition={{ delay: 0.3 }}
             style={{ fontSize: 27, color: 'var(--fog-300)', margin: '26px 0 0' }}
           >
-            Ba câu này là <strong style={{ color: 'var(--fog-100)' }}>toàn bộ phương pháp</strong>.
-            Việc còn lại: dịch chúng thành code chạy được →
+            Ba câu này là <strong style={{ color: 'var(--fog-100)' }}>lõi của thuật toán</strong>.
+            Bước tiếp theo: chuyển thành code →
           </motion.p>
         )}
       </AnimatePresence>

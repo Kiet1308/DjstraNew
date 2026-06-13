@@ -94,9 +94,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Nhìn từ trên cao, mắt ta tự mò ra đáp án mà <Em>không biết VÌ SAO</Em>. Muốn tìm ra
-          QUY TẮC mà máy móc làm theo được, ta phải tự bịt bớt mắt — chỉ cho phép biết những gì
-          đã khám phá.
+          Nếu nhìn toàn bộ bản đồ, ta dễ thấy đáp án nhưng khó thấy quy tắc. Vì vậy ta che phần
+          chưa khám phá lại và chỉ dùng những gì đã biết.
         </>
       ),
     },
@@ -112,11 +111,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Với mỗi điểm, ta muốn điền một con số — độ dài đường ngắn nhất từ A đến nó. Nhưng{' '}
-          <Em>CHỈ điền khi CHẮC CHẮN</Em>: dù sau này khám phá thêm bao nhiêu, con số đó không
-          bao giờ phải sửa. Vì sao khó tính vậy? Cách thử-tất-cả chậm vì làm đi làm lại. Nếu
-          mỗi bước ta <Em>XONG HẲN một điểm, không bao giờ quay lại</Em> — không lãng phí một
-          bước nào.
+          Với mỗi điểm, ta chỉ ghi số khi <Em>CHẮC CHẮN</Em> số đó sẽ không phải sửa. Nếu mỗi
+          bước chốt hẳn một điểm, ta không phải quay lại làm lại.
         </>
       ),
     },
@@ -151,9 +147,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Ta <Em>CHẮC CHẮN</Em> được đường ngắn nhất đến điểm nào? —{' '}
-          <Em color="var(--cyan)">click điểm đó trên hình</Em>. (Cứ thử từng ứng viên — loại
-          trừ cũng là suy luận!)
+          Ta <Em>CHẮC CHẮN</Em> được đường ngắn nhất đến điểm nào?{' '}
+          <Em color="var(--cyan)">Click thử từng ứng viên.</Em>
         </>
       ),
     },
@@ -165,8 +160,8 @@ const BEATS = defineBeats<Beat>([
           ghost: { id: 'ghost-cd', from: 'C', to: 'D', label: '10?' },
           text: (
             <>
-              Chưa chắc được — biết đâu trong sương có đường C–D? Chỉ cần C–D = 10 là 4+10 ={' '}
-              <Em>14 &lt; 18</Em> rồi. <Em>(Giữ lấy nghi ngờ này — lát nữa có bất ngờ.)</Em>
+              Chưa chắc được — biết đâu trong sương có đường C–D ngắn hơn? Chỉ cần C–D = 10 là
+              4+10 = <Em>14 &lt; 18</Em>. Chỗ này lát nữa sẽ kiểm tra lại.
             </>
           ),
         },
@@ -228,10 +223,9 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Chốt C rồi thì từ C nhìn tiếp: thấy điểm mới <Em>E</Em> — đường tốt nhất đã biết đến
-          nó: 4+6=<Em>10</Em>. Điểm thấy rồi mà chưa chắc, gọi là <Em>ĐANG MỞ</Em>. Và kìa — có
-          đường C–D thật: 4+12=16 &lt; 18. <Em>Nghi ngờ lúc nãy là SỰ THẬT!</Em> Chưa có giấy
-          bút — cả nhà <Em>nhớ giùm</Em>: E mười, D mười sáu.
+          Từ C nhìn tiếp: thấy điểm mới <Em>E</Em>, với chi phí 4+6=<Em>10</Em>. Điểm thấy rồi
+          mà chưa chắc, gọi là <Em>ĐANG MỞ</Em>. Đồng thời D được cải thiện: 4+12=16 &lt; 18.
+          Tạm nhớ: E=10, D=16.
         </>
       ),
     },
@@ -263,7 +257,7 @@ const BEATS = defineBeats<Beat>([
           text: (
             <>
               Chưa chắc được — biết đâu từ E có đường sang D? Chỉ cần E–D = 5 là 10+5 ={' '}
-              <Em>15 &lt; 16</Em>. <Em>(Nghi ngờ này lát nữa cũng thành SỰ THẬT.)</Em>
+              <Em>15 &lt; 16</Em>. Chỗ này cũng sẽ kiểm tra lại.
             </>
           ),
         },
@@ -280,8 +274,8 @@ const BEATS = defineBeats<Beat>([
         tone: 'insight',
         text: (
           <>
-            Còn lại <Em>G=6</Em>. Nhưng công bằng thì G cũng phải bị <Em>thử phá</Em> như hai
-            bạn kia: biết đâu trong sương có đường nào đó đến G rẻ hơn 6? Cho nó một cơ hội →
+            Còn lại <Em>G=6</Em>. Ta cũng thử phá G như các điểm khác: biết đâu trong sương có
+            đường nào đó đến G rẻ hơn 6?
           </>
         ),
       },
@@ -296,11 +290,9 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Cho một đường <Em color="var(--red)">"lẻn"</Em> từ A đến G xem. Muốn lang thang trong
-          vùng tối thì trước hết phải <Em>chui được vào</Em> — mà vùng tối{' '}
-          <Em>không có cửa sau</Em>: lối vào duy nhất là bước qua một điểm sáng đang mở (E=10
-          hoặc D=16). Mới đặt chân đến cửa đã tốn ≥ 10 &gt; 6 rồi, đi tiếp chỉ dài thêm.{' '}
-          <Em>Không phá nổi → chốt G ✓.</Em>
+          Giả sử có đường khác đến G. Đường đó muốn đi vào vùng chưa biết thì trước hết phải qua
+          một điểm đang mở: E=10 hoặc D=16. Vừa tới đó đã lớn hơn 6, nên không thể tốt hơn G.{' '}
+          <Em>Chốt G ✓.</Em>
         </>
       ),
     },
@@ -322,7 +314,7 @@ const BEATS = defineBeats<Beat>([
       text: (
         <>
           G nhận dấu ✓, từ G nhìn tiếp: thấy thêm <Em>F</Em> (6+12=18) và <Em>H</Em> (6+14=20).
-          Sương lùi dần — nhưng B vẫn bặt tăm.
+          B vẫn chưa xuất hiện.
         </>
       ),
     },
@@ -347,10 +339,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Kiểm tra trí nhớ cái nào: <Em>D đang là bao nhiêu — 18 hay 16?</Em> E? F? H?… Mới bảy
-          điểm mà đầu đã muốn rối. Người quên thì cộng lại được — nhưng muốn thành{' '}
-          <Em>QUY TẮC cho máy làm theo</Em> thì không được phép "nhớ mang máng". Phải{' '}
-          <Em>ghi ra</Em> thôi.
+          Có nhiều số phải nhớ: <Em>D là 18 hay 16?</Em> E, F, H là bao nhiêu? Muốn máy làm
+          theo thì các số này phải được <Em>ghi rõ</Em>.
         </>
       ),
     },
@@ -370,7 +360,7 @@ const BEATS = defineBeats<Beat>([
         <>
           Ghi vào góc mỗi điểm con số <Em>tốt nhất ĐÃ BIẾT</Em> — <Em>cho đỡ phải nhớ</Em>.
           Điểm đã chốt thì số ấy là vĩnh viễn; điểm đang mở thì mới là "tạm thời tốt nhất". Dân
-          code lười viết dài, gọi tắt là <Em>cost</Em> — lát viết code cũng dùng đúng tên này.
+          lập trình gọi gọn con số này là <Em>cost</Em> — lát viết code cũng dùng đúng tên này.
         </>
       ),
     },
@@ -388,8 +378,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Bốn điểm đang mở: E=10, D=16, F=18, H=20 — <Em>lần đầu con số nằm sẵn trên bản đồ</Em>
-          . Chắc chắn tiếp điểm nào? Click thử.
+          Bốn điểm đang mở: E=10, D=16, F=18, H=20 — <Em>lần đầu con số nằm sẵn trên bản đồ</Em>.
+          Chắc chắn tiếp điểm nào? Click thử.
         </>
       ),
     },
@@ -427,10 +417,8 @@ const BEATS = defineBeats<Beat>([
         tone: 'insight',
         text: (
           <>
-            <Em>E</Em> — thử phá nốt: mọi ngả khác đến E đều phải bước qua một cửa đang mở còn
-            lại: D=16, F=18, H=20. Cửa nào cũng đắt hơn 10 sẵn rồi, đi tiếp chỉ dài thêm —{' '}
-            <Em>không phá nổi. Chốt E ✓.</Em> (Để ý: cả 3 nghi ngờ vừa nãy đều phải mượn đường
-            qua E — chính kẻ rẻ nhất.)
+            <Em>E=10</Em> rẻ nhất. Muốn tìm đường khác đến E, trước hết phải qua D, F hoặc H,
+            mà các điểm đó đều đã lớn hơn 10. Vậy E không thể bị phá. <Em>Chốt E ✓.</Em>
           </>
         ),
       },
@@ -451,11 +439,9 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Khoan… để ý không? Ba lần thử phá — kẻ sống sót <Em>lần nào cũng là điểm đang mở RẺ
-          NHẤT</Em>. Lý do lần nào cũng đúng một câu: mọi ngả khác phải bước qua một cửa{' '}
-          <Em>đắt hơn nó</Em>, rồi đi tiếp chỉ dài thêm. Rẻ nhất thì không ai phá nổi. Vậy từ
-          giờ <Em>khỏi thử từng ứng viên</Em> — cứ điểm đang mở rẻ nhất là{' '}
-          <Em>CHỐT thẳng tay</Em>.
+          Sau ba lần thử, ta thấy cùng một quy tắc: điểm đang mở <Em>rẻ nhất</Em> luôn chốt
+          được. Từ giờ không cần thử từng ứng viên nữa — cứ chọn điểm đang mở rẻ nhất để{' '}
+          <Em>chốt</Em>.
         </>
       ),
     },
@@ -477,9 +463,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Mở từ E: <Em>THẤY ĐÍCH B!</Em> 10+6=16. Và đường E–D <Em>có thật</Em>: 10+4=14 —
-          nghi ngờ từ hai màn trước thành sự thật nốt. Nhìn góc điểm D kìa: con số{' '}
-          <Em color="var(--green)">tự sửa 16 → 14</Em> — may mà đã ghi ra, khỏi ai phải nhớ.
+          Mở từ E: thấy <Em>đích B</Em> với cost 10+6=16. Đồng thời D được cập nhật từ 16 xuống{' '}
+          <Em color="var(--green)">14</Em>. Đây là lý do ta phải ghi cost rõ ràng.
         </>
       ),
     },
@@ -497,10 +482,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'warn',
       text: (
         <>
-          Khoan — thấy đích rồi! B=16. Dừng được chưa? <Em color="var(--red)">…Chưa.</Em> Hỏi
-          luật vừa đúc: điểm đang mở rẻ nhất là <Em>D=14</Em>, đâu phải B. Nghĩa là chính B còn
-          có thể bị phá — biết đâu vòng qua D lại rẻ hơn? 16 mới là "tốt nhất ĐÃ BIẾT" —{' '}
-          <Em>chỉ tin con số khi đã CHỐT</Em>.
+          Thấy B=16 nhưng chưa dừng: <Em>D=14</Em> còn rẻ hơn, nên B vẫn có thể bị cải thiện.
+          Chỉ dừng khi <Em>B được chốt</Em>.
         </>
       ),
     },
@@ -519,9 +502,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Áp luật — khỏi đắn đo: D=14 rẻ nhất → <Em>CHỐT D</Em>. Kiểm tra ngả từ D sang B:
-          14+6=20 &gt; 16 → <Em>B giữ nguyên</Em>. Vòng qua D không rẻ hơn — nghi ngờ cuối cùng
-          tắt.
+          D=14 rẻ nhất → <Em>CHỐT D</Em>. Kiểm tra D–B: 14+6=20 &gt; 16, nên{' '}
+          <Em>B giữ nguyên</Em>.
         </>
       ),
     },

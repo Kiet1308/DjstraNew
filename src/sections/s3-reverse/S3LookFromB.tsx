@@ -35,9 +35,9 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Đứng ở A nhìn về B: <Em color="var(--red)">hàng trăm ngả</Em>, càng nhìn càng rối — ta
-          vừa nếm mùi rồi. Quay ống kính nhìn từ B: chỉ có đúng <Em>3 lối dẫn VÀO</Em>. Phía nào
-          dễ bắt chuyện hơn? Thử hỏi ngược từ B.
+          Nhìn từ A thì <Em color="var(--red)">quá nhiều hướng</Em>, ta vừa thấy ở phần trước.
+          Thử đổi góc: nhìn từ B. Muốn vào B thì chỉ có đúng <Em>3 đường cuối</Em> — từ D, E
+          hoặc F.
         </>
       ),
     },
@@ -64,7 +64,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Một người vừa đặt chân đến B. <Em>Bước CUỐI CÙNG</Em> của họ xuất phát từ đâu?
+          Nếu một đường đi kết thúc ở B, <Em>bước ngay trước B</Em> là từ đâu?
         </>
       ),
     },
@@ -91,8 +91,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Chỉ có 3 đoạn nối chạm vào B — từ <Em>D</Em>, từ <Em>E</Em>, hoặc từ <Em>F</Em>. Vậy
-          đường ngắn nhất đến B <Em>CHỈ có thể</Em> đi qua 1 trong 3 cửa này.
+          Vậy đường ngắn nhất đến B bắt buộc đi qua <Em>D</Em>, <Em>E</Em>, hoặc <Em>F</Em>.
         </>
       ),
     },
@@ -120,9 +119,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Đường ngắn nhất đến B là phương án rẻ nhất trong <Em>3 kịch bản</Em> dưới đây — chọn
-          1 trong 3, không còn cửa nào khác. Mà đã qua cửa D thì đoạn đầu phải là đường{' '}
-          <Em>tốt nhất đến D</Em>: đoạn đầu còn rút ngắn được thì cả tuyến rút ngắn được.
+          Chỉ còn <Em>3 khả năng</Em>: tốt nhất đến D rồi sang B, tốt nhất đến E rồi sang B,
+          hoặc tốt nhất đến F rồi sang B. Phương án nhỏ nhất là đáp án.
         </>
       ),
     },
@@ -155,8 +153,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Bài toán đổi vai: muốn biết đường ngắn nhất đến B — hãy đi tìm đường tốt nhất đến{' '}
-          <Em>D</Em>, đến <Em>E</Em>, và đến <Em>F</Em>.
+          Bài toán chuyển thành: tìm đường tốt nhất đến <Em>D</Em>, <Em>E</Em> và <Em>F</Em>.
         </>
       ),
     },
