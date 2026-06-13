@@ -45,7 +45,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Đang thử tuyến mới, đi tới đây thì đồng hồ chỉ <Em color="var(--red)">18</Em> — mà kỷ
+          Đang thử tuyến mới, đi tới đây thì chi phí hiện tại là <Em color="var(--red)">18</Em> — mà kỷ
           lục đang là <Em>16</Em>. Câu hỏi: tuyến này còn <Em>đáng đi tiếp</Em> không?
         </>
       ),
@@ -59,8 +59,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          <Em color="var(--red)">Dừng!</Em> Mới nửa đường đã đắt hơn kỷ lục — đi nốt kiểu gì
-          cũng chỉ tốn thêm. <Em>CẮT NHÁNH</Em> ngay tại đây, khỏi đi tiếp.
+          <Em color="var(--red)">Dừng!</Em> Mới nửa đường đã đắt hơn kỷ lục — chi phí hiện tại
+          đã vượt tuyến tốt nhất. <Em>CẮT NHÁNH</Em> ngay tại đây, khỏi đi tiếp.
         </>
       ),
     },
@@ -74,9 +74,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'insight',
       text: (
         <>
-          Để ý: nhát cắt vừa rồi không chỉ bỏ MỘT tuyến. <Em>Mọi tuyến tương lai</Em> phải chui
-          qua đoạn đắt này — chưa kịp thử — <Em color="var(--red)">chết theo cùng lúc</Em>:
-          1 nhát = <Em>3 tuyến</Em>.
+          Để ý: nhát cắt vừa rồi không chỉ bỏ MỘT tuyến. <Em>Mọi tuyến tương lai</Em>{' '}
+          <Em color="var(--red)">có thể bị loại cùng lúc</Em>: 1 nhát = <Em>3 tuyến</Em>.
         </>
       ),
     },
@@ -89,11 +88,10 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Bản đồ 12 ngã tư lúc nãy: mới đi {BIGGEST_SNIP.prefix.length - 1} đoạn đã tốn{' '}
+          Bản đồ 12 nút giao lúc nãy: mới đi {BIGGEST_SNIP.prefix.length - 1} đoạn đã tốn{' '}
           <Em color="var(--red)">{BIGGEST_SNIP.prefixCost}</Em> — hơn kỷ lục tạm trên bản đồ
           này (<Em>{BIGGEST_SNIP.bestAtTime}</Em>). Câu hỏi: phía sau chỗ này còn{' '}
-          <Em>bao nhiêu tuyến chưa thử</Em> — mà tuyến nào cũng phải chui qua đúng đoạn đắt
-          này?
+          <Em>bao nhiêu tuyến chưa thử</Em> — mà tuyến nào cũng mở rộng từ điểm này?
         </>
       ),
     },
@@ -107,7 +105,7 @@ const BEATS = defineBeats<Beat>([
       text: (
         <>
           <Em color="var(--red)">MỘT nhát cắt — {KILLED} tuyến biến mất</Em>, không tốn thêm
-          một bước chân nào. Cắt càng <Em>sớm</Em>, chùm chết theo càng <Em>to</Em>.
+          một bước chân nào. Cắt càng <Em>sớm</Em>, số tuyến bị loại càng <Em>nhiều</Em>.
         </>
       ),
     },
@@ -138,7 +136,7 @@ const BEATS = defineBeats<Beat>([
         <>
           Nhưng kéo không tự biết chỗ cắt: vẫn phải <Em>mò đến tận nơi</Em> rồi mới biết là
           đắt — <Em color="var(--red)">{PROBES}</Em> lần lần-đường-rồi-cắt như thế, chỉ cho 12
-          ngã tư. Bản đồ thật hàng nghìn ngã tư: số lần mò… vẫn <Em>bùng nổ</Em>.
+          nút giao. Bản đồ thật hàng nghìn nút giao: số lần mò… vẫn <Em>bùng nổ</Em>.
         </>
       ),
     },

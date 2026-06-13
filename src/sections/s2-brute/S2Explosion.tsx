@@ -13,7 +13,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'neutral',
       text: (
         <>
-          Thử sức với bản đồ to hơn <Em>một chút</Em> thôi: 12 ngã tư. Vẫn cách cũ — thử tất
+          Thử sức với bản đồ to hơn <Em>một chút</Em> thôi: 12 nút giao. Vẫn cách cũ — thử tất
           cả các tuyến từ A đến B.
         </>
       ),
@@ -25,9 +25,8 @@ const BEATS = defineBeats<Beat>([
       tone: 'warn',
       text: (
         <>
-          Đếm hộ máy cái…{' '}
           <Em color="var(--red)">{BIG_TOTAL.toLocaleString('vi-VN')} tuyến khác nhau</Em> — chỉ
-          với 12 ngã tư.
+          với 12 nút giao.
         </>
       ),
     },
@@ -38,9 +37,9 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Mỗi lần thêm vài ngã tư, số tuyến lại <Em>nhân</Em> lên — bản đồ thật hàng nghìn ngã
-          tư thì con số vượt mọi sức tưởng tượng. Thử-tất-cả{' '}
-          <Em color="var(--red)">không lớn theo kịp</Em> bản đồ.
+          Mỗi lần thêm vài nút giao, số tuyến lại <Em>nhân</Em> lên — bản đồ thật hàng nghìn nút
+          giao thì con số vượt mọi sức tưởng tượng. Việc thử tất cả tuyến là{' '}
+          <Em color="var(--red)">bất khả thi</Em>.
         </>
       ),
     },

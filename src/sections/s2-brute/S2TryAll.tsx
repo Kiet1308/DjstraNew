@@ -52,7 +52,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Ý tưởng tự nhiên nhất: cứ <Em>THỬ TẤT CẢ</Em> các tuyến, đo tổng chi phí từng tuyến,
+          Cách nghĩ đơn giản nhất: cứ <Em>THỬ TẤT CẢ</Em> các tuyến, đo tổng chi phí từng tuyến,
           giữ lại tuyến bé nhất.
         </>
       ),
@@ -93,7 +93,7 @@ const BEATS = defineBeats<Beat>([
       text: (
         <>
           Tuyến này thì… đi mãi tới H là <Em color="var(--red)">hết đường</Em> — không dẫn đến
-          đích. Quay đầu. Công toi một chuyến.
+          đích. Quay đầu. Tuyến A → G → H bị loại.
         </>
       ),
     },
@@ -120,7 +120,7 @@ const BEATS = defineBeats<Beat>([
       tone: 'need',
       text: (
         <>
-          Bản đồ đồ chơi này có cả thảy <Em>8</Em> tuyến tới đích. Đi 4 chuyến mới đo xong{' '}
+          Bản đồ nhỏ này có cả thảy <Em>8</Em> tuyến tới đích. Đi 4 chuyến mới đo xong{' '}
           <Em>3</Em> — còn tốn nguyên một chuyến đâm ngõ cụt. Thành phố <Em>thật</Em> thì
           sao?
         </>

@@ -26,7 +26,7 @@ const LINES = [
     key: 'l1',
     body: (
       <>
-        Vấn đề không nằm ở đôi chân — nó nằm ở <Em>câu hỏi</Em>. Hỏi{' '}
+        Vấn đề không nằm ở nhanh hay chậm — nó nằm ở <Em>câu hỏi</Em>. Hỏi{' '}
         <span style={{ fontStyle: 'italic', color: 'var(--fog-100)', marginRight: 6 }}>
           "tuyến nào ngắn nhất?"
         </span>{' '}
@@ -38,8 +38,8 @@ const LINES = [
     key: 'l2',
     body: (
       <>
-        Muốn thoát, phải <Em color="var(--cyan)">đổi cách nghĩ</Em> — đừng hỏi về những con
-        đường nữa.
+        Muốn thoát, phải <Em color="var(--cyan)">đổi cách nghĩ</Em> — không xét từng tuyến hoàn
+        chỉnh.
       </>
     ),
   },
