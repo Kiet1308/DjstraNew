@@ -71,6 +71,46 @@ export type MathOverlayDef = {
   dy?: number
 }
 
+/** Con trỏ quét tìm min (Phần 4): vòng sáng chạy dọc route, dừng ở đỉnh cuối.
+    runId đổi → quét lại từ đầu. tone 'lock' = đỉnh vừa được chốt (amber). */
+export type ProbeDef = {
+  route: NodeId[]
+  runId: string
+  tone?: 'scan' | 'lock'
+}
+
+/** Thẻ "min" nổi: neo trên một đỉnh, có dây nối xuống — thẻ chỉ nhảy sang đỉnh
+    khác khi đỉnh đó rẻ hơn. tone: keep=giữ (green) · warn=cảnh báo (amber) · lose. */
+export type MinHolderDef = {
+  node: NodeId
+  value: number | string
+  tone?: 'keep' | 'warn' | 'lose'
+  /** tag phụ dưới thẻ: "A đã chốt rồi?!", "2 < 4 · giữ"… */
+  note?: string
+}
+
+/** Gói chi phí trượt dọc cạnh from→to mang theo phép tính ("4+12=16"). */
+export type CostPacketDef = {
+  id: string
+  from: NodeId
+  to: NodeId
+  label: string
+  tone?: 'better' | 'worse' | 'info'
+}
+
+/** Bảng quyết định Cost[at]: cửa vào → cổng so sánh → ô đang giữ.
+    Mỗi phase = một tiểu-cảnh (bấm "Tiếp"): ô trống → nhận số → ứng viên thứ hai
+    → (CÁI SAI) ghi đè → (BẢN VÁ) cổng chặn bật ngược. */
+export type DecisionDef = {
+  at: NodeId
+  phase: 'empty' | 'receive' | 'second' | 'overwrite' | 'gate'
+  /** số ô đang giữ (null = trống) */
+  held?: number | null
+  /** số ứng viên mới đang gõ cửa */
+  incoming?: number
+  runId: string
+}
+
 export type GraphSceneState = {
   variant: 'map' | 'abstract'
   nodeStates: Record<NodeId, NodeVisualState>
@@ -88,6 +128,11 @@ export type GraphSceneState = {
   prevArrows?: PrevArrowDef[]
   /** Flash badge cost theo KỊCH BẢN (rewind-an-toàn): worse = ghi đè xấu (đỏ). */
   costFlash?: Record<NodeId, 'worse' | 'better'>
+  /** Gadget Phần 4 — đều scene-driven (rewind = đổi props), xem types ở trên. */
+  probe?: ProbeDef
+  minHolder?: MinHolderDef
+  packets?: CostPacketDef[]
+  decision?: DecisionDef
   /** Đường giả định "lẻn qua vùng tối" (cut property). */
   phantom?: { points: [number, number][]; crossAt?: [number, number]; label?: string }
   mathOverlays?: MathOverlayDef[]

@@ -15,11 +15,15 @@ import { FogMaskContent, FogAtmosphere } from './FogLayer'
 import { SvgIdsContext, type SvgIds } from './svgIds'
 import {
   ChaosRays,
+  CostPacket,
+  DecisionTable,
   DepArrow,
   GhostEdgeView,
   MathOverlayChip,
+  MinHolderCard,
   PhantomPath,
   PrevArrow,
+  ProbeCursor,
 } from './decorations'
 
 /** Dev-only: bắt typo id trong scene trước khi lên sóng. */
@@ -39,6 +43,17 @@ function assertSceneIds(graph: GraphData, layout: LayoutMap, scene: GraphSceneSt
   for (const id of scene.fog?.revealed ?? []) {
     if (!nodeIds.has(id)) throw new Error(`scene.fog.revealed: đỉnh lạ "${id}"`)
   }
+  for (const id of scene.probe?.route ?? []) {
+    if (!nodeIds.has(id)) throw new Error(`scene.probe.route: đỉnh lạ "${id}"`)
+  }
+  if (scene.minHolder && !nodeIds.has(scene.minHolder.node))
+    throw new Error(`scene.minHolder: đỉnh lạ "${scene.minHolder.node}"`)
+  for (const pk of scene.packets ?? []) {
+    if (!nodeIds.has(pk.from) || !nodeIds.has(pk.to))
+      throw new Error(`scene.packets: cạnh lạ "${pk.from}->${pk.to}"`)
+  }
+  if (scene.decision && !nodeIds.has(scene.decision.at))
+    throw new Error(`scene.decision: đỉnh lạ "${scene.decision.at}"`)
 }
 
 /**
@@ -198,6 +213,20 @@ export function GraphView({
 
           {chaosFrom && layout[chaosFrom] && <ChaosRays from={layout[chaosFrom]} />}
 
+          {/* Con trỏ quét tìm min — halo phía sau đỉnh */}
+          <AnimatePresence>
+            {scene.probe && (
+              <ProbeCursor
+                key={scene.probe.runId}
+                route={scene.probe.route}
+                runId={scene.probe.runId}
+                tone={scene.probe.tone}
+                layout={layout}
+                nodeRadius={nodeSize}
+              />
+            )}
+          </AnimatePresence>
+
           {/* Mũi tên "tôi đến từ đây" (Prev) — trên cạnh, dưới đỉnh */}
           <AnimatePresence>
             {scene.prevArrows?.map((p) => (
@@ -270,6 +299,13 @@ export function GraphView({
               })}
           </AnimatePresence>
 
+          {/* Gói chi phí trượt dọc cạnh — trên badge để đọc được nhãn */}
+          <AnimatePresence>
+            {scene.packets?.map((pk) => (
+              <CostPacket key={pk.id} packet={pk} layout={layout} nodeRadius={nodeSize} />
+            ))}
+          </AnimatePresence>
+
           {/* Mũi tên phụ thuộc — trên cùng của lớp SVG */}
           <AnimatePresence>
             {scene.depArrows?.arrows.map((a) => (
@@ -289,12 +325,27 @@ export function GraphView({
           </AnimatePresence>
         </svg>
 
-        {/* Lớp HTML: phép tính cạnh đỉnh */}
+        {/* Lớp HTML: phép tính cạnh đỉnh + gadget Phần 4 (thẻ min, bảng quyết định) */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <AnimatePresence>
             {scene.mathOverlays?.map((m) => (
               <MathOverlayChip key={`${m.at}:${m.text}`} overlay={m} layout={layout} />
             ))}
+          </AnimatePresence>
+          <AnimatePresence>
+            {scene.minHolder && (
+              <MinHolderCard
+                key={scene.minHolder.node}
+                holder={scene.minHolder}
+                layout={layout}
+                nodeRadius={nodeSize}
+              />
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {scene.decision && (
+              <DecisionTable key="decision" decision={scene.decision} layout={layout} />
+            )}
           </AnimatePresence>
         </div>
 

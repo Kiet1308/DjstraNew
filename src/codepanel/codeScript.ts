@@ -15,6 +15,22 @@ function t(...parts: ReactNode[]): ReactNode {
 
 const K_C_HIDDEN = { ED: 'hidden', EB: 'hidden', DB: 'hidden', GF: 'hidden', GH: 'hidden', FB: 'hidden' } as const
 
+const R_ALL = ['A', 'C', 'G', 'D', 'E', 'F', 'H', 'B']
+const ALL_DIM = {
+  AC: 'dimmed',
+  AG: 'dimmed',
+  AD: 'dimmed',
+  CD: 'dimmed',
+  CE: 'dimmed',
+  ED: 'dimmed',
+  EB: 'dimmed',
+  DB: 'dimmed',
+  GF: 'dimmed',
+  GH: 'dimmed',
+  FB: 'hidden',
+} as const
+const COSTS_FINAL = { A: 0, C: 4, G: 6, E: 10, D: 14, F: 18, H: 20, B: 16 }
+
 /** Ba trạng thái sương cùng lúc: chưa thấy / đang mở / đã chốt. */
 const scThreeStates: GraphSceneState = sceneBase({
   fog: { revealed: ['A', 'C', 'G', 'D', 'E'] },
@@ -31,14 +47,40 @@ const scStart: GraphSceneState = sceneBase({
   costs: { A: 0 },
 })
 
-/** Khoảnh khắc quét tìm min: G=6 thắng. */
-const scMin: GraphSceneState = sceneBase({
-  fog: { revealed: ['A', 'C', 'G', 'D', 'E'] },
-  nodeStates: { A: 'locked', C: 'locked', G: 'current', D: 'frontier', E: 'frontier' },
-  edgeStates: { ...K_C_HIDDEN },
-  costs: { A: 0, C: 4, G: 6, D: 16, E: 10 },
-  mathOverlays: [{ at: 'G', text: 'min: 6 < 10 < 16', tone: 'info', dx: 40, dy: 70 }],
+/** Vùng biên: A đã chốt (0), C/G/D đang mở (4,6,18) — đúng các ngả của A. */
+const scFrontier: GraphSceneState = sceneBase({
+  fog: { revealed: ['A', 'C', 'G', 'D'] },
+  nodeStates: { A: 'locked', C: 'frontier', G: 'frontier', D: 'frontier' },
+  edgeStates: { AC: 'active', AG: 'active', AD: 'active', CD: 'hidden' },
+  costs: { A: 0, C: 4, G: 6, D: 18 },
+  weights: true,
 })
+
+/** Quét tìm min kiểu ngây thơ (chỉ so số): probe chạy A→C→G→D, A=0 vẫn thắng. */
+const scMinScan: GraphSceneState = {
+  ...scFrontier,
+  probe: { route: ['A', 'C', 'G', 'D'], runId: 'min-scan' },
+  minHolder: { node: 'A', value: 0, tone: 'keep' },
+}
+
+/** Lộ bug: A chốt từ lâu mà vẫn được chọn lại — kẹt vòng.
+    GIỮ dấu ✓ của A (vẫn 'locked') — chính nghịch lý "đã đóng dấu mà vẫn bị chọn"
+    mới là cái cần thấy; probe đi một vòng C→G→D rồi QUAY LẠI A để lộ "duyệt hết
+    vẫn lòi về A". */
+const scMinBug: GraphSceneState = {
+  ...scFrontier,
+  nodeStates: { A: 'locked', C: 'frontier', G: 'frontier', D: 'frontier' },
+  probe: { route: ['A', 'C', 'G', 'D', 'A'], runId: 'min-bug' },
+  minHolder: { node: 'A', value: 0, tone: 'warn', note: 'A đã chốt rồi?!' },
+}
+
+/** Vá xong: probe BỎ QUA A → C = 4 mới là nhỏ nhất. */
+const scMinFixed: GraphSceneState = {
+  ...scFrontier,
+  nodeStates: { A: 'locked', C: 'current', G: 'frontier', D: 'frontier' },
+  probe: { route: ['C', 'G', 'D'], runId: 'min-fixed' },
+  minHolder: { node: 'C', value: 4, tone: 'keep', note: 'bỏ A · C = 4 nhỏ nhất' },
+}
 
 /** Thấy B=16 nhưng D=14 còn mở — đúng cảnh "chưa được dừng". */
 const scSeeGoal: GraphSceneState = sceneBase({
@@ -66,23 +108,49 @@ const scMapC: GraphSceneState = sceneBase({
   weights: true,
 })
 
-/** min vừa thắng cuộc quét → được đóng dấu ✓. */
-const scLockG: GraphSceneState = sceneBase({
-  fog: { revealed: ['A', 'C', 'G', 'D', 'E'] },
-  nodeStates: { A: 'locked', C: 'locked', G: 'locked', D: 'frontier', E: 'frontier' },
-  edgeStates: { ...K_C_HIDDEN },
-  costs: { A: 0, C: 4, G: 6, D: 16, E: 10 },
-  weights: true,
-})
+/** Chốt C: dấu ✓ đóng vào C, probe đổi sang amber. */
+const scLockC: GraphSceneState = {
+  ...scFrontier,
+  nodeStates: { A: 'locked', C: 'locked', G: 'frontier', D: 'frontier' },
+  probe: { route: ['C'], runId: 'lock-c', tone: 'lock' },
+}
 
-/** Relax D qua C: 4+12=16 < 18. */
-const scRelax: GraphSceneState = sceneBase({
+/** Mở kề C: gói chi phí trượt C→D (4+12=16) và C→E (4+6=10) — gán THÔ. */
+const scOpenC: GraphSceneState = sceneBase({
   fog: { revealed: ['A', 'C', 'G', 'D', 'E'] },
   nodeStates: { A: 'locked', C: 'locked', G: 'frontier', D: 'frontier', E: 'frontier' },
-  edgeStates: { ...K_C_HIDDEN, AC: 'relaxing', CD: 'relaxing' },
+  edgeStates: {
+    AC: 'active',
+    CD: 'relaxing',
+    CE: 'relaxing',
+    AG: 'dimmed',
+    AD: 'dimmed',
+    ED: 'hidden',
+  },
   costs: { A: 0, C: 4, G: 6, D: 16, E: 10 },
   weights: true,
-  mathOverlays: [{ at: 'D', text: '4+12=16 < 18', tone: 'better', dx: -30 }],
+  packets: [
+    { id: 'pk-cd', from: 'C', to: 'D', label: '4+12=16', tone: 'better' },
+    { id: 'pk-ce', from: 'C', to: 'E', label: '4+6=10', tone: 'better' },
+  ],
+})
+
+/** Hết ứng viên: quét cả lượt không ai lọt → min = null (đã chốt hết). */
+const scExhausted: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: {
+    A: 'dimmed',
+    C: 'dimmed',
+    G: 'dimmed',
+    E: 'dimmed',
+    D: 'dimmed',
+    B: 'dimmed',
+    F: 'dimmed',
+    H: 'dimmed',
+  },
+  edgeStates: { ...ALL_DIM },
+  costs: COSTS_FINAL,
+  mathOverlays: [{ at: 'D', text: 'quét cả lượt — chẳng ai lọt → min = null', tone: 'info', dy: -120 }],
 })
 
 /** Nhánh KHÔNG đổi: 14+6=20 > 16 → giữ nguyên. */
@@ -144,22 +212,6 @@ const scFull: GraphSceneState = sceneBase({
   costs: { A: 0, C: 4, G: 6, E: 10, D: 14, B: 16, F: 18, H: 20 },
 })
 
-const R_ALL = ['A', 'C', 'G', 'D', 'E', 'F', 'H', 'B']
-const ALL_DIM = {
-  AC: 'dimmed',
-  AG: 'dimmed',
-  AD: 'dimmed',
-  CD: 'dimmed',
-  CE: 'dimmed',
-  ED: 'dimmed',
-  EB: 'dimmed',
-  DB: 'dimmed',
-  GF: 'dimmed',
-  GH: 'dimmed',
-  FB: 'hidden',
-} as const
-const COSTS_FINAL = { A: 0, C: 4, G: 6, E: 10, D: 14, F: 18, H: 20, B: 16 }
-
 /** Kết thúc thuật toán: biết GIÁ mọi điểm — KHÔNG cạnh nào sáng. Đường chưa tồn tại. */
 const scCostsNoPath: GraphSceneState = sceneBase({
   fog: { revealed: R_ALL },
@@ -177,100 +229,67 @@ const scCostsNoPath: GraphSceneState = sceneBase({
   costs: COSTS_FINAL,
 })
 
-/* ===== Cảnh "cho máy LỖI chạy thật" — vì sao phải có if (Cụm B) ===== */
+/* ===== Cảnh "chỉ ghi khi rẻ hơn" — bảng quyết định Cost[B] (gadget) =====
+   B nhận 16 qua E, rồi D đề xuất 20: ô đã có số → phải so trước khi ghi.
+   Bảng quyết định tự diễn câu chuyện; đồ thị chỉ làm nền chỉ ra "ở đâu". */
 
-/** Tua đến lúc chốt D: B đang giữ 16 đẹp qua lối A–C–E–B (sáng mờ). */
-const scNaiveSetup: GraphSceneState = sceneBase({
-  fog: { revealed: R_ALL },
-  nodeStates: {
-    A: 'locked',
-    C: 'locked',
-    G: 'locked',
-    E: 'locked',
-    D: 'current',
-    F: 'frontier',
-    H: 'frontier',
-    B: 'frontier',
-  },
-  edgeStates: { ...ALL_DIM, AC: 'active', CE: 'active', EB: 'active' },
-  costs: COSTS_FINAL,
-  weights: true,
-})
+const DEC_NODES: GraphSceneState['nodeStates'] = {
+  A: 'locked',
+  C: 'locked',
+  G: 'locked',
+  E: 'locked',
+  D: 'locked',
+  B: 'current',
+  F: 'dimmed',
+  H: 'dimmed',
+}
 
-/** Mở lại B từ D: newCost = 14+6 = 20. */
-const scNaiveRelax: GraphSceneState = sceneBase({
+/** Ô B còn TRỐNG — zoom vào đúng lúc sắp ghi Cost[B]. */
+const scDecEmpty: GraphSceneState = sceneBase({
   fog: { revealed: R_ALL },
-  nodeStates: {
-    A: 'locked',
-    C: 'locked',
-    G: 'locked',
-    E: 'locked',
-    D: 'current',
-    F: 'frontier',
-    H: 'frontier',
-    B: 'frontier',
-  },
-  edgeStates: { ...ALL_DIM, AC: 'active', CE: 'active', EB: 'active', DB: 'relaxing' },
-  costs: COSTS_FINAL,
-  weights: true,
-  mathOverlays: [{ at: 'B', text: '14+6=20', tone: 'info', dx: -60 }],
-})
-
-/** CÚ ĐẤM: không có if → 16 bị đè thành 20, lối đẹp tắt phụt. */
-const scNaiveOverwrite: GraphSceneState = sceneBase({
-  fog: { revealed: R_ALL },
-  nodeStates: {
-    A: 'locked',
-    C: 'locked',
-    G: 'locked',
-    E: 'locked',
-    D: 'current',
-    F: 'frontier',
-    H: 'frontier',
-    B: 'frontier',
-  },
-  edgeStates: { ...ALL_DIM, DB: 'active' },
-  costs: { ...COSTS_FINAL, B: 20 },
-  costFlash: { B: 'worse' },
-  weights: true,
-})
-
-/** Hậu quả đứng hình: máy trả lời 20 — sai. */
-const scNaiveBroken: GraphSceneState = sceneBase({
-  fog: { revealed: R_ALL },
-  nodeStates: {
-    A: 'locked',
-    C: 'locked',
-    G: 'locked',
-    E: 'locked',
-    D: 'current',
-    F: 'frontier',
-    H: 'frontier',
-    B: 'frontier',
-  },
+  nodeStates: { ...DEC_NODES },
   edgeStates: { ...ALL_DIM },
-  costs: { ...COSTS_FINAL, B: 20 },
-  costFlash: { B: 'worse' },
-  weights: true,
-  mathOverlays: [{ at: 'B', text: 'máy trả lời 20 ✗ (đáp án thật: 16)', tone: 'worse', dx: -120 }],
+  costs: { ...COSTS_FINAL, B: null },
+  decision: { at: 'B', phase: 'empty', held: null, runId: 'dec-empty' },
 })
 
-/** Nhánh == null: ngăn TRỐNG (chưa từng thấy F) → lần đầu cứ ghi. */
-const scNullFirstWrite: GraphSceneState = sceneBase({
-  fog: { revealed: ['A', 'C', 'G', 'D', 'E', 'F', 'H'] },
-  nodeStates: {
-    A: 'locked',
-    C: 'locked',
-    G: 'locked',
-    D: 'frontier',
-    E: 'frontier',
-    F: 'frontier',
-    H: 'frontier',
-  },
-  edgeStates: { ED: 'hidden', EB: 'hidden', DB: 'hidden', FB: 'hidden', GF: 'relaxing' },
-  costs: { A: 0, C: 4, G: 6, D: 16, E: 10, F: null, H: 20 },
-  weights: true,
-  mathOverlays: [{ at: 'F', text: 'trống → ghi 6+12=18', tone: 'better', dx: -130, dy: -110 }],
+/** E mở B: 10+6=16 — ô trống thì nhận luôn. */
+const scDecReceive: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: { ...DEC_NODES },
+  edgeStates: { ...ALL_DIM, AC: 'onPath', CE: 'onPath', EB: 'onPath' },
+  costs: { ...COSTS_FINAL, B: 16 },
+  decision: { at: 'B', phase: 'receive', held: 16, runId: 'dec-recv' },
+})
+
+/** D cũng tới: 14+6=20 — nhưng ô đã giữ 16. Gói "20" trượt từ D cho có lai lịch
+    (đường D→B nằm DƯỚI bảng quyết định nên không bị che). */
+const scDecSecond: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: { ...DEC_NODES, D: 'current' },
+  edgeStates: { ...ALL_DIM, AC: 'onPath', CE: 'onPath', EB: 'onPath', DB: 'active' },
+  costs: { ...COSTS_FINAL, B: 16 },
+  packets: [{ id: 'pk-db20', from: 'D', to: 'B', label: '14+6=20', tone: 'info' }],
+  decision: { at: 'B', phase: 'second', held: 16, incoming: 20, runId: 'dec-2nd' },
+})
+
+/** CÁI SAI — gán bừa: 20 đè 16, đường tốt tắt phụt. */
+const scDecOverwrite: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: { ...DEC_NODES, D: 'current' },
+  edgeStates: { ...ALL_DIM, AC: 'dimmed', CE: 'dimmed', EB: 'dimmed', DB: 'active' },
+  costs: { ...COSTS_FINAL, B: 20 },
+  costFlash: { B: 'worse' },
+  decision: { at: 'B', phase: 'overwrite', held: 16, incoming: 20, runId: 'dec-ow' },
+})
+
+/** BẢN VÁ — cổng so sánh: 20 không nhỏ hơn 16 → bị chặn, giữ 16. */
+const scDecGate: GraphSceneState = sceneBase({
+  fog: { revealed: R_ALL },
+  nodeStates: { ...DEC_NODES, D: 'current' },
+  edgeStates: { ...ALL_DIM, AC: 'onPath', CE: 'onPath', EB: 'onPath', DB: 'active' },
+  costs: { ...COSTS_FINAL, B: 16 },
+  decision: { at: 'B', phase: 'gate', held: 16, incoming: 20, runId: 'dec-gate' },
 })
 
 /* ===== Cảnh Phần Prev (Cụm C) — visual là chính ===== */
@@ -499,12 +518,15 @@ const costDecl = L('cost-decl', 'Cost = []', 1)
 const visDecl = L('vis-decl', 'Visited = []', 1)
 const startZero = L('start-zero', 'Cost[start] = 0', 1)
 const loopOpen = L('loop-open', 'while (true) {', 1)
-const phDone = L('ph-done', 'nếu chốt hết → dừng', 2, 'placeholder')
-const phFound = L('ph-found', 'nếu gặp đích → dừng', 2, 'placeholder')
+// đặt nợ bằng lời MƠ HỒ đúng tầm hiểu lúc đó — chưa dùng thuật ngữ "chốt hết/gặp đích"
+const phDone = L('ph-done', 'dừng khi nào? — tính sau (1)', 2, 'placeholder')
+const phFound = L('ph-found', 'và khi nào nữa? — tính sau (2)', 2, 'placeholder')
 const loopClose = L('loop-close', '}', 1)
 const minInit = L('min-init', 'min = null', 2)
 const scanOpen = L('scan-open', 'for đỉnh in map {', 2)
 const scanIfOpen = L('scan-if-open', 'if Cost[đỉnh] != null và not Visited[đỉnh] {', 3)
+// bản gõ ĐẦU TIÊN — chưa loại điểm đã chốt; beat "Visited" sẽ morph thành scanIfOpen.text
+const scanIfOpenBare = L('scan-if-open', 'if Cost[đỉnh] != null {', 3)
 const minIfOpen = L('min-if-open', 'if min == null hoặc Cost[đỉnh] < Cost[min] {', 4)
 const minSet = L('min-set', 'min = đỉnh', 5)
 const minIfClose = L('min-if-close', '}', 4)
@@ -539,201 +561,98 @@ function need(
 }
 
 export const BUILD_SCRIPT: CodeBeat[] = [
-  /* ===== MÀN 1 — cầu nối sương ↔ dữ liệu (visual, cả 3 beat đều có thẻ
-     phụ → đồ thị đứng yên một cỡ suốt màn, không nhún lên xuống) ===== */
+  /* ===== MÀN 1 — cầu nối sương ↔ dữ liệu. Text = nhãn ngắn, lời nói miệng.
+     Thẻ phụ (stateTable/mapTable/costCabinet) đã gánh phần minh hoạ. ===== */
   {
     focus: 'visual',
-    callout: {
-      tone: 'need',
-      text: t(
-        'Ở bước khám phá, mỗi điểm có ',
-        em('3 tình trạng', 'var(--cyan)'),
-        ': chưa thấy — đang mở (có con số tạm) — đã chốt ✓. Khi viết code, ta ghi lại đúng 3 trạng thái đó: chưa thấy = ',
-        em('Cost == null'),
-        ' · đang mở = ',
-        em('Cost ≠ null'),
-        ' · đã chốt = ',
-        em('Visited = true'),
-        '.',
-      ),
-    },
+    callout: { tone: 'need', text: t(em('3 tình trạng', 'var(--cyan)'), ' của mỗi điểm') },
     graphScene: scThreeStates,
     aside: 'stateTable',
     pseudoStep: null,
   },
   {
-    callout: {
-      tone: 'need',
-      text: t(
-        'Còn tấm bản đồ? Gói gọn trong một bảng tra tên là ',
-        em('map'),
-        ': tra một điểm → nhận danh sách các điểm nối với nó kèm chi phí. Ví dụ ',
-        em('map[C]', 'var(--cyan)'),
-        ' — đứng ở C thấy đúng 3 ngả, bảng ghi đúng 3 dòng.',
-      ),
-    },
+    callout: { tone: 'need', text: t('Bản đồ → bảng tra ', em('map')) },
     graphScene: scMapC,
     aside: 'mapTable',
   },
   {
-    callout: {
-      tone: 'need',
-      text: t(
-        'Và cách ghi chép: coi như mỗi điểm có một ',
-        em('ô trong bảng Cost'),
-        ' — ',
-        em('Cost["C"] = 4', 'var(--cyan)'),
-        ' đọc là "ô C trong bảng Cost đang ghi số 4".',
-      ),
-    },
+    callout: { tone: 'need', text: t('Mỗi điểm một ô ', em('Cost')) },
     graphScene: scThreeStates,
     aside: 'costCabinet',
   },
 
-  /* ===== MÀN 2 — gõ máy (code nở một lần, đứng yên suốt màn) ===== */
-  // ---- khung hàm
+  /* ===== MÀN 2 — gõ máy ===== */
+  // ---- Khung hàm
   ...need(
-    {
-      tone: 'need',
-      text: t(
-        'Bắt tay. Ta cần một ',
-        em('hàm'),
-        ': nhận bản đồ, điểm xuất phát, điểm đích — trả về độ dài đường ngắn nhất.',
-      ),
-    },
+    { tone: 'need', text: t('Cần một ', em('hàm'), ': map, start, end → độ dài') },
     { ops: [{ op: 'insert', afterId: null, lines: [fnOpen, fnClose] }], highlight: ['fn-open'] },
     { focus: 'code' },
   ),
 
-  // ---- 2 ngăn tủ
+  // ---- Cost = [] + Cost[start] = 0
   ...need(
+    { tone: 'insight', text: t(em('Cost[A] = 0'), ' · còn lại chưa biết') },
     {
-      tone: 'need',
-      text: t(
-        'Câu ① nhắc đến hai thứ phải nhớ: ',
-        em('cost tốt nhất đã biết', 'var(--cyan)'),
-        ' của từng điểm, và điểm nào ',
-        em('đã chốt'),
-        '. Mỗi thứ một bảng.',
-      ),
+      ops: [{ op: 'insert', afterId: 'fn-open', lines: [costDecl, startZero] }],
+      highlight: ['cost-decl', 'start-zero'],
     },
-    {
-      ops: [{ op: 'insert', afterId: 'fn-open', lines: [costDecl, visDecl] }],
-      highlight: ['cost-decl', 'vis-decl'],
-    },
-    { pseudoStep: 1 },
+    { graphScene: scStart, pseudoStep: null },
   ),
 
-  // ---- Cost[start] = 0
+  // ---- Vòng lặp + 2 placeholder
   ...need(
-    {
-      tone: 'insight',
-      text: t(
-        'Các bảng đang rỗng — trừ một điều ta biết ngay: đường ngắn nhất từ A đến A ',
-        em('bằng 0'),
-        '. Cả phát hiện hôm trước nằm gọn trong một dòng.',
-      ),
-    },
-    { ops: [{ op: 'insert', afterId: 'vis-decl', lines: [startZero] }], highlight: ['start-zero'] },
-    { graphScene: scStart },
-  ),
-
-  // ---- vòng lặp + 2 placeholder
-  ...need(
-    {
-      tone: 'need',
-      text: t(
-        'Câu ③ bảo ',
-        em('lặp'),
-        '. Lặp đến bao giờ? Ta đặt tạm 2 điều kiện dừng, rồi lát nữa thay bằng code thật.',
-      ),
-    },
+    { tone: 'need', text: t(em('Lặp'), ': chọn → mở. Dừng khi nào? tính sau') },
     {
       ops: [{ op: 'insert', afterId: 'start-zero', lines: [loopOpen, phDone, phFound, loopClose] }],
       highlight: ['ph-done', 'ph-found'],
     },
-    { pseudoStep: 3 },
+    { pseudoStep: 3, graphScene: scFrontier },
   ),
 
-  // ---- quét tìm min
+  // ---- Chọn min (viết THÔ — chưa loại điểm đã chốt)
   ...need(
+    { tone: 'need', text: t(em('① Chọn', 'var(--cyan)'), ' điểm mở, cost nhỏ nhất → min') },
     {
-      tone: 'need',
-      text: t(
-        'Vào việc chính — câu ①: "chọn điểm đang mở có cost ',
-        em('bé nhất'),
-        '". Muốn biết bao giờ dừng thì phải chọn trước đã. Máy sẽ ',
-        em('duyệt từng điểm một', 'var(--cyan)'),
-        ' và giữ ứng viên nhỏ nhất hiện tại trong biến min.',
-      ),
+      ops: [
+        {
+          op: 'insert',
+          afterId: 'loop-open',
+          lines: [minInit, scanOpen, scanIfOpenBare, minIfOpen, minSet, minIfClose, scanIfClose, scanClose],
+        },
+      ],
+      highlight: ['min-init', 'scan-open', 'min-set'],
     },
-    {
-      ops: [{ op: 'insert', afterId: 'loop-open', lines: [minInit, scanOpen, scanClose] }],
-      highlight: ['min-init', 'scan-open'],
-    },
-    { pseudoStep: 1, graphScene: scThreeStates },
-  ),
-  ...need(
-    {
-      tone: 'need',
-      text: t(
-        'Nhưng chỉ xét những điểm "đang mở mà chưa chốt" — dịch theo bảng ghi chép: ',
-        em('có cost', 'var(--cyan)'),
-        ' (đã thấy) ',
-        em('và chưa đóng dấu', 'var(--cyan)'),
-        ' (chưa Visited).',
-      ),
-    },
-    {
-      ops: [{ op: 'insert', afterId: 'scan-open', lines: [scanIfOpen, scanIfClose] }],
-      highlight: ['scan-if-open'],
-    },
-  ),
-  ...need(
-    {
-      tone: 'need',
-      text: t(
-        'Gặp ứng viên hợp lệ thì so với min hiện tại; nhỏ hơn thì cập nhật min. Ba điểm đang mở: ',
-        em('6 < 10 < 16', 'var(--cyan)'),
-        ' — G thắng.',
-      ),
-    },
-    {
-      ops: [{ op: 'insert', afterId: 'scan-if-open', lines: [minIfOpen, minSet, minIfClose] }],
-      highlight: ['min-if-open', 'min-set'],
-    },
-    { graphScene: scMin },
+    { pseudoStep: 1, graphScene: scMinScan },
   ),
 
-  // ---- trả nợ placeholder 1
+  // ---- Lộ bug → vá Visited
+  {
+    callout: { tone: 'warn', text: t('A chốt rồi mà ', em('vẫn bị chọn lại', 'var(--red)'), ' ?!') },
+    graphScene: scMinBug,
+  },
+  {
+    callout: { tone: 'insight', text: t('Đánh dấu ', em('Visited'), ' → quét thì bỏ qua') },
+    ops: [
+      { op: 'insert', afterId: 'cost-decl', lines: [visDecl] },
+      { op: 'morph', targetId: 'scan-if-open', text: scanIfOpen.text },
+    ],
+    highlight: ['vis-decl', 'scan-if-open'],
+    graphScene: scMinFixed,
+  },
+
+  // ---- Trả nợ placeholder 1: chốt hết = min null
   ...need(
-    {
-      tone: 'insight',
-      text: t(
-        'Điều kiện dừng thứ nhất: quét xong một lượt mà ',
-        em('chẳng chọn nổi điểm nào'),
-        ' — tức là min vẫn null.',
-      ),
-    },
+    { tone: 'insight', text: t('Quét hụt cả lượt → ', em('min null'), ' → dừng') },
     {
       ops: [{ op: 'replace', targetId: 'ph-done', lines: [breakDone] }],
       highlight: ['break-done'],
     },
-    { pseudoStep: 3 },
+    { pseudoStep: 3, graphScene: scExhausted },
   ),
 
-  // ---- trả nợ placeholder 2 — callout trỏ ngược màn sương
+  // ---- Trả nợ placeholder 2: gặp đích = min == end
   ...need(
-    {
-      tone: 'insight',
-      text: t(
-        'Điều kiện dừng thứ hai. Nhớ lúc ',
-        em('thấy B=16 mà chưa dám dừng', 'var(--cyan)'),
-        ' không? Chính là dòng này: chỉ dừng khi đích ',
-        em('được CHỐT'),
-        ' — tức là khi end được chọn làm min — chứ không phải khi vừa thoáng thấy nó.',
-      ),
-    },
+    { tone: 'insight', text: t('Đích ', em('được CHỐT'), ' (min == end) → xong') },
     {
       ops: [{ op: 'replace', targetId: 'ph-found', lines: [breakFound] }],
       highlight: ['break-found'],
@@ -741,133 +660,51 @@ export const BUILD_SCRIPT: CodeBeat[] = [
     { graphScene: scSeeGoal },
   ),
 
-  // ---- đóng dấu
+  // ---- Chốt min
   ...need(
-    {
-      tone: 'need',
-      text: t('Nếu không dừng ở hai điều kiện trên, min chính là điểm cần chốt. ', em('Đóng dấu ✓.')),
-    },
+    { tone: 'need', text: t('min đã chắc → ', em('đóng dấu ✓')) },
     { ops: [{ op: 'insert', afterId: 'break-found', lines: [lock] }], highlight: ['lock'] },
-    { pseudoStep: 2, graphScene: scLockG },
+    { pseudoStep: 2, graphScene: scLockC },
   ),
 
-  // ---- mở các điểm nối — đặt tên "đỉnh kề"
+  // ---- Mở kề (gán THÔ — chưa có điều kiện)
   ...need(
+    { tone: 'need', text: t(em('② Mở', 'var(--cyan)'), ' hàng xóm: cost min + cạnh') },
     {
-      tone: 'need',
-      text: t(
-        'Câu ②: "mở các điểm ',
-        em('nối với nó', 'var(--cyan)'),
-        '". Danh sách đó nằm sẵn ở map[min]. Đặt cho gọn cái tên: ',
-        em('đỉnh kề'),
-        ' — "kề" nghĩa là nối trực tiếp.',
-      ),
+      ops: [{ op: 'insert', afterId: 'lock', lines: [nbOpen, newCost, setCost, nbClose] }],
+      highlight: ['nb-open', 'newcost', 'setcost'],
     },
-    { ops: [{ op: 'insert', afterId: 'lock', lines: [nbOpen, nbClose] }], highlight: ['nb-open'] },
-    { pseudoStep: 2 },
+    { graphScene: scOpenC },
   ),
 
-  // ---- newCost
-  ...need(
-    {
-      tone: 'need',
-      text: t(
-        'Mở một điểm là ghi cho nó con số tạm: ',
-        em('cost của min + chi phí đoạn nối', 'var(--cyan)'),
-        '. Chi phí đoạn nối lấy từ map. Ví dụ từ C sang D là ',
-        em('map[C][D] = 12', 'var(--cyan)'),
-        '. Đúng phép cộng lúc nãy: 4+12=16.',
-      ),
-    },
-    { ops: [{ op: 'insert', afterId: 'nb-open', lines: [newCost] }], highlight: ['newcost'] },
-    { graphScene: scRelax },
-  ),
-
-  // ---- ghi cost (ngây thơ)
-  {
-    callout: { tone: 'need', text: t('Tạm ghi cost mới cho điểm kề.') },
-    ops: [{ op: 'insert', afterId: 'newcost', lines: [setCost] }],
-    highlight: ['setcost'],
-  },
-
-  /* ===== MÀN 3 — máy lỗi CHẠY THẬT (visual: đồ thị nở to xem tai họa) =====
-     KHÔNG KỂ tai họa — code trên màn lúc này thật sự chưa có if, lỗi 100% thật */
+  /* ===== MÀN 3 — "chỉ ghi khi rẻ hơn": bảng quyết định Cost[B] (chuỗi tiểu-cảnh) ===== */
   {
     focus: 'visual',
-    callout: {
-      tone: 'warn',
-      text: t(
-        'Dòng vừa viết có ',
-        em('kẽ hở', 'var(--red)'),
-        '. Tua đến lúc chốt D — B đang có cost ',
-        em('16', 'var(--cyan)'),
-        ' theo đường tốt hơn.',
-      ),
-    },
-    graphScene: scNaiveSetup,
+    callout: { tone: 'warn', text: t('Ghi Cost[B] — ô đang ', em('trống', 'var(--cyan)')) },
+    graphScene: scDecEmpty,
   },
   {
-    callout: {
-      tone: 'warn',
-      text: t('Mở lại B từ D: newCost = 14+6 = ', em('20'), '.'),
-    },
-    highlight: ['newcost'],
-    graphScene: scNaiveRelax,
+    callout: { tone: 'need', text: t('Trống → nhận ', em('16', 'var(--green)')) },
+    graphScene: scDecReceive,
   },
   {
-    callout: {
-      tone: 'warn',
-      text: t(
-        'Dòng này ',
-        em('ghi đè luôn', 'var(--red)'),
-        ': cost 16 của B bị đổi thành ',
-        em('20', 'var(--red)'),
-        '.',
-      ),
-    },
+    callout: { tone: 'need', text: t('D tới: ', em('20'), ' · ô đã có 16') },
+    graphScene: scDecSecond,
+  },
+  {
+    callout: { tone: 'warn', text: t('Gán bừa: ', em('20 đè 16', 'var(--red)'), ' → mất đường tốt') },
     highlight: ['setcost'],
     highlightTone: 'danger',
-    graphScene: scNaiveOverwrite,
+    graphScene: scDecOverwrite,
   },
   {
-    callout: {
-      tone: 'need',
-      text: t(
-        'Hỏng: máy trả lời ',
-        em('20 ✗', 'var(--red)'),
-        '. Vậy luật ghi cost phải là: chỉ ghi khi ',
-        em('tốt hơn'),
-        '.',
-      ),
-    },
-    graphScene: scNaiveBroken,
+    callout: { tone: 'insight', text: t(em('Rẻ hơn?'), ' 20 > 16 → ', em('khỏi ghi', 'var(--green)')) },
+    graphScene: scDecGate,
   },
-  {
-    callout: {
-      tone: 'need',
-      text: t(
-        'Còn ô ',
-        em('TRỐNG', 'var(--cyan)'),
-        '? Trống nghĩa là chưa từng thấy — lần đầu gặp thì cứ ghi. Nếu đã có số thì chỉ ghi khi newCost nhỏ hơn.',
-      ),
-    },
-    highlight: ['setcost'],
-    graphScene: scNullFirstWrite,
-  },
-  /* ===== MÀN 4 — vá máy + return (quay về code đúng lúc đặt tay gõ) ===== */
+
+  /* ===== MÀN 4 — vá if + xét lại A + return ===== */
   ...need(
-    {
-      tone: 'insight',
-      text: t(
-        'Bọc dòng cũ lại: còn ',
-        em('trống', 'var(--cyan)'),
-        ', hoặc ',
-        em('nhỏ hơn', 'var(--cyan)'),
-        ' — mới được ghi. Chạy lại đúng tình huống vừa nãy: 20 > 16 → ',
-        em('giữ nguyên'),
-        '. Cost 16 được giữ nguyên.',
-      ),
-    },
+    { tone: 'insight', text: t('Bọc ', em('if'), ': trống / nhỏ hơn mới ghi') },
     {
       // máy quay về code TẠI beat gõ — beat nói trước đó vẫn đứng trong màn visual
       focus: 'code',
@@ -887,41 +724,22 @@ export const BUILD_SCRIPT: CodeBeat[] = [
 
   // ---- xét lại A
   {
-    callout: {
-      tone: 'insight',
-      text: t(
-        'Kiểm tra trường hợp quay ngược về A: 4+4=8 — không nhỏ hơn 0. ',
-        em('Điều kiện vừa viết sẽ bỏ qua'),
-        '. Không cần thêm dòng nào.',
-      ),
-    },
+    callout: { tone: 'insight', text: t('Quay về A: 8 > 0 → ', em('if tự bỏ qua')) },
     highlight: ['if-better-open'],
     graphScene: scBackToA,
   },
 
   // ---- return
   ...need(
-    {
-      tone: 'need',
-      text: t(
-        'Vòng lặp dừng nghĩa là đích đã chốt. Câu hỏi ban đầu — "độ dài ngắn nhất đến end?" — đáp án nằm trong Cost[end].',
-      ),
-    },
+    { tone: 'need', text: t('Đáp án ở ', em('Cost[end]')) },
     { ops: [{ op: 'insert', afterId: 'loop-close', lines: [ret] }], highlight: ['ret'] },
     // máy lúc này chỉ biết CON SỐ — chưa hề biết đường (đường sáng để dành cho màn Prev)
     { graphScene: scCostsNoPath, pseudoStep: null },
   ),
 
-  // ---- tổng kết — thắp cả 3 câu checklist: "25 dòng = 3 câu" nhìn thấy được
+  // ---- tổng kết — thắp cả 3 câu checklist
   {
-    callout: {
-      tone: 'insight',
-      text: t(
-        'Nhìn lại cả trang: 25 dòng — mà thực chất chỉ là ',
-        em('3 câu ở slide trước'),
-        '. Code không phát minh điều gì mới; nó chép lại suy luận.',
-      ),
-    },
+    callout: { tone: 'insight', text: t('Mấy chục dòng = ', em('3 câu lúc nãy')) },
     graphScene: scCostsNoPath,
     pseudoStep: 'all',
   },

@@ -1,6 +1,17 @@
-import { motion } from 'motion/react'
-import type { DepArrowDef, GhostEdge, MathOverlayDef, PrevArrowDef } from './types'
+import { motion, useAnimationFrame, useMotionValue } from 'motion/react'
+import { type CSSProperties, useEffect, useRef } from 'react'
+import type {
+  CostPacketDef,
+  DecisionDef,
+  DepArrowDef,
+  GhostEdge,
+  MathOverlayDef,
+  MinHolderDef,
+  PrevArrowDef,
+  ProbeDef,
+} from './types'
 import type { LayoutMap } from './layouts'
+import { routeToPathD, usePointAlongPath } from './usePointAlongPath'
 import { useSvgIds } from './svgIds'
 
 /**
@@ -287,5 +298,427 @@ export function ChaosRays({ from, count = 14 }: { from: { x: number; y: number }
         />
       ))}
     </g>
+  )
+}
+
+/* ===================== Gadget Phần 4 — "viết code" =====================
+   Tất cả scene-driven: lùi beat = re-mount → animate-vào lại (như ChaosRays).
+   Hai cái chạy-dọc (ProbeCursor, CostPacket) tái dùng nguyên cơ chế TravelerDot
+   (usePointAlongPath + useMotionValue + useAnimationFrame). Hai cái HTML
+   (MinHolderCard, DecisionTable) tái dùng pattern MathOverlayChip. */
+
+/** Con trỏ quét tìm min: vòng sáng nét đứt xoay tròn, chạy dọc route rồi dừng
+    ở đỉnh cuối (= ứng viên min). tone 'lock' = đỉnh vừa chốt → đổi sang amber. */
+export function ProbeCursor({
+  route,
+  runId,
+  tone = 'scan',
+  layout,
+  nodeRadius = 34,
+}: ProbeDef & { layout: LayoutMap; nodeRadius?: number }) {
+  const pts = route.map((id) => layout[id]).filter(Boolean)
+  const d = routeToPathD(pts)
+  const { pathRef, sample } = usePointAlongPath()
+  const cx = useMotionValue(pts[0]?.x ?? -300)
+  const cy = useMotionValue(pts[0]?.y ?? -300)
+  const startRef = useRef<number | null>(null)
+  const duration = 420 + Math.max(0, pts.length - 1) * 360 // ~360ms mỗi nhịp nhảy
+
+  useEffect(() => {
+    startRef.current = null
+  }, [runId, d])
+
+  useAnimationFrame((t) => {
+    if (startRef.current === null) startRef.current = t
+    const progress = Math.min(1, (t - startRef.current) / duration)
+    const p = sample(progress)
+    if (p) {
+      cx.set(p.x)
+      cy.set(p.y)
+    }
+  })
+
+  if (pts.length === 0) return null
+  const color = tone === 'lock' ? 'var(--amber)' : 'var(--cyan)'
+  // path đo cần độ dài > 0 kể cả route 1 đỉnh (đứng yên) — thêm đoạn cực ngắn
+  const measureD = d && pts.length > 1 ? d : `M ${pts[0].x} ${pts[0].y} L ${pts[0].x + 0.01} ${pts[0].y}`
+
+  return (
+    <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+      <path ref={pathRef} d={measureD} fill="none" stroke="none" style={{ opacity: 0 }} />
+      <motion.circle r={nodeRadius + 18} style={{ cx, cy }} fill={color} opacity={0.1} />
+      <motion.circle
+        r={nodeRadius + 8}
+        fill="none"
+        stroke={color}
+        strokeWidth={3}
+        strokeDasharray="7 9"
+        style={{ cx, cy, transformBox: 'fill-box', transformOrigin: 'center' }}
+        animate={{ opacity: [0.5, 1, 0.5], rotate: [0, 360] }}
+        transition={{
+          opacity: { duration: 1.1, repeat: Infinity, ease: 'easeInOut' },
+          rotate: { duration: 6, repeat: Infinity, ease: 'linear' },
+        }}
+      />
+    </motion.g>
+  )
+}
+
+/** Gói chi phí: viên thuốc ghi phép tính trượt từ from→to dọc cạnh (easeOut),
+    dừng ngay TRƯỚC tâm đỉnh đích để không che badge cost. */
+export function CostPacket({
+  packet,
+  layout,
+  nodeRadius = 34,
+}: {
+  packet: CostPacketDef
+  layout: LayoutMap
+  nodeRadius?: number
+}) {
+  const a = layout[packet.from]
+  const b = layout[packet.to]
+  const { pathRef, sample } = usePointAlongPath()
+  const x = useMotionValue(a?.x ?? -300)
+  const y = useMotionValue(a?.y ?? -300)
+  const startRef = useRef<number | null>(null)
+  const duration = 850
+
+  useEffect(() => {
+    startRef.current = null
+  }, [packet.id])
+
+  const dist = a && b ? Math.hypot(b.x - a.x, b.y - a.y) || 1 : 1
+  const tEnd = Math.max(0.45, 1 - (nodeRadius + 30) / dist)
+
+  useAnimationFrame((t) => {
+    if (startRef.current === null) startRef.current = t
+    const raw = Math.min(1, (t - startRef.current) / duration)
+    const eased = 1 - Math.pow(1 - raw, 3)
+    const p = sample(eased * tEnd)
+    if (p) {
+      x.set(p.x)
+      y.set(p.y)
+    }
+  })
+
+  if (!a || !b) return null
+  const color =
+    packet.tone === 'worse' ? 'var(--red)' : packet.tone === 'info' ? 'var(--cyan)' : 'var(--green)'
+  const w = 28 + packet.label.length * 13
+
+  return (
+    <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+      <path ref={pathRef} d={`M ${a.x} ${a.y} L ${b.x} ${b.y}`} fill="none" stroke="none" style={{ opacity: 0 }} />
+      <motion.g style={{ x, y }}>
+        <rect x={-w / 2} y={-19} width={w} height={38} rx={12} fill="var(--ink-1)" stroke={color} strokeWidth={2.5} />
+        <text
+          x={0}
+          y={1}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontFamily="var(--font-mono)"
+          fontSize={21}
+          fontWeight={700}
+          fill={color}
+        >
+          {packet.label}
+        </text>
+      </motion.g>
+    </motion.g>
+  )
+}
+
+/** Thẻ "min" nổi (HTML over-SVG): neo trên đỉnh, có dây nối xuống. */
+export function MinHolderCard({
+  holder,
+  layout,
+  nodeRadius = 34,
+}: {
+  holder: MinHolderDef
+  layout: LayoutMap
+  nodeRadius?: number
+}) {
+  const p = layout[holder.node]
+  if (!p) return null
+  const tone = holder.tone ?? 'keep'
+  const color = tone === 'warn' ? 'var(--amber)' : tone === 'lose' ? 'var(--fog-400)' : 'var(--green)'
+  const LIFT = 152
+  const tetherH = Math.max(16, LIFT - nodeRadius - (holder.note ? 104 : 60))
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, x: '-50%' }}
+      animate={{ opacity: 1, y: 0, x: '-50%' }}
+      exit={{ opacity: 0, y: -8, x: '-50%' }}
+      transition={{ duration: 0.42, ease: 'backOut' }}
+      style={{
+        position: 'absolute',
+        left: p.x,
+        top: p.y - LIFT,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 23,
+          fontWeight: 700,
+          color: 'var(--fog-100)',
+          background: 'rgba(11, 18, 32, 0.94)',
+          border: `2.5px solid ${color}`,
+          borderRadius: 12,
+          padding: '8px 18px',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 8px 28px rgba(2, 6, 14, 0.6)',
+        }}
+      >
+        <span style={{ color: 'var(--fog-400)' }}>min</span> ={' '}
+        <span style={{ color }}>{holder.node}</span>
+        <span style={{ color: 'var(--fog-400)' }}> · </span>
+        <span style={{ color }}>{holder.value}</span>
+      </div>
+      {holder.note && (
+        <div
+          style={{
+            marginTop: 7,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 18,
+            fontWeight: 700,
+            color,
+            background: 'rgba(11, 18, 32, 0.82)',
+            border: `1.5px solid ${color}`,
+            borderRadius: 9,
+            padding: '3px 12px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {holder.note}
+        </div>
+      )}
+      <div style={{ width: 2.5, height: tetherH, background: color, opacity: 0.45, marginTop: 3 }} />
+    </motion.div>
+  )
+}
+
+/* Toạ độ nội bộ bảng quyết định (trong khung 560×196). */
+const DEC_ENTRY_X = 80
+const DEC_GATE_X = 268
+const DEC_CELL_X = 456
+const DEC_ROW_Y = 120
+const DEC_CHIP: CSSProperties = {
+  position: 'absolute',
+  top: DEC_ROW_Y,
+  transform: 'translate(-50%, -50%)',
+  minWidth: 56,
+  height: 44,
+  borderRadius: 11,
+  border: '2.5px solid',
+  background: 'var(--ink-1)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '0 12px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: 23,
+  fontWeight: 800,
+}
+
+/** Bảng quyết định Cost[at]: cửa vào → cổng so sánh → ô đang giữ (HTML over-SVG).
+    Mỗi phase một tiểu-cảnh; ô đang giữ là TRẠNG THÁI THẬT (rewind-an-toàn),
+    chip chuyển động chỉ là hiệu ứng-vào lúc mount. */
+export function DecisionTable({ decision }: { decision: DecisionDef; layout: LayoutMap }) {
+  const { phase, held, incoming, runId } = decision
+  // neo trong khoảng trời trống trên-phải, cạnh đỉnh B — nằm gọn trong vùng crop
+  const left = 1180
+  const top = 200
+  const cellShows = phase === 'overwrite' ? incoming : phase === 'empty' ? null : held
+  const cellRed = phase === 'overwrite'
+  const cellDashed = phase === 'empty'
+  const cellColor = cellRed ? 'var(--red)' : cellDashed ? 'var(--fog-500)' : 'var(--green)'
+
+  const movingChip = phase === 'receive' || phase === 'overwrite' || phase === 'gate'
+  // ứng viên đang được XÉT = cyan (đang mở), không phải amber (amber = đã chốt)
+  const movingColor = phase === 'overwrite' ? 'var(--red)' : phase === 'gate' ? 'var(--cyan)' : 'var(--green)'
+  const movingVal = phase === 'receive' ? held : incoming
+  // số keyframe của left & opacity & times phải KHỚP nhau
+  const movingLeft =
+    phase === 'gate'
+      ? [DEC_ENTRY_X, DEC_GATE_X - 30, DEC_ENTRY_X] // lao tới cổng rồi bật ngược
+      : [DEC_ENTRY_X, DEC_ENTRY_X, DEC_CELL_X, DEC_CELL_X] // chờ → trượt vào ô → đậu
+  const movingOpacity = phase === 'gate' ? [0, 1, 1] : [0, 1, 1, 0]
+  const movingTimes = phase === 'gate' ? [0, 0.5, 1] : [0, 0.15, 0.7, 1]
+
+  const label = (x: number, text: string) => (
+    <div
+      style={{
+        position: 'absolute',
+        left: x,
+        top: 64,
+        transform: 'translateX(-50%)',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 17,
+        color: 'var(--fog-400)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+    </div>
+  )
+  const arrow = (from: number, to: number) => (
+    <div
+      style={{
+        position: 'absolute',
+        left: from,
+        top: DEC_ROW_Y,
+        width: to - from,
+        height: 2,
+        transform: 'translateY(-50%)',
+        background: 'var(--line)',
+      }}
+    />
+  )
+
+  return (
+    <motion.div
+      key={runId}
+      initial={{ opacity: 0, y: 16, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.97 }}
+      transition={{ duration: 0.45, ease: 'backOut' }}
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: 560,
+        height: 196,
+        background: 'rgba(9, 14, 26, 0.96)',
+        border: '1.5px solid var(--line)',
+        borderRadius: 16,
+        boxShadow: '0 18px 50px rgba(2, 6, 14, 0.6)',
+        pointerEvents: 'none',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 16,
+          left: 24,
+          fontFamily: 'var(--font-mono)',
+          fontSize: 21,
+          fontWeight: 700,
+          color: 'var(--fog-200)',
+        }}
+      >
+        ô <span style={{ color: 'var(--cyan)' }}>Cost[{decision.at}]</span>
+      </div>
+
+      {label(DEC_ENTRY_X, 'ứng viên')}
+      {/* câu hỏi treo lên TỪ lúc có hai số để so (second), trước khi đóng dấu ✗ (gate) */}
+      {label(DEC_GATE_X, phase === 'second' || phase === 'gate' ? 'rẻ hơn?' : '')}
+      {label(DEC_CELL_X, 'đang giữ')}
+
+      {arrow(DEC_ENTRY_X + 44, DEC_GATE_X - 44)}
+      {arrow(DEC_GATE_X + 44, DEC_CELL_X - 52)}
+
+      {/* cổng chặn (chỉ phase gate) */}
+      {phase === 'gate' && (
+        <motion.div
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 0.3 }}
+          style={{
+            position: 'absolute',
+            left: DEC_GATE_X,
+            top: DEC_ROW_Y,
+            transform: 'translate(-50%, -50%)',
+            width: 7,
+            height: 76,
+            borderRadius: 4,
+            background: 'var(--red)',
+            boxShadow: '0 0 14px rgba(255,122,110,0.5)',
+          }}
+        />
+      )}
+
+      {/* ô đang giữ — trạng thái thật của beat */}
+      <div
+        style={{
+          ...DEC_CHIP,
+          left: DEC_CELL_X,
+          borderStyle: cellDashed ? 'dashed' : 'solid',
+          borderColor: cellColor,
+          background: cellRed ? '#2a1512' : cellDashed ? 'var(--ink-2)' : '#143524',
+          color: cellColor,
+        }}
+      >
+        {cellShows == null ? '' : cellShows}
+      </div>
+
+      {/* ứng viên đứng chờ ở cửa (phase second) */}
+      {phase === 'second' && (
+        <div style={{ ...DEC_CHIP, left: DEC_ENTRY_X, borderColor: 'var(--cyan)', color: 'var(--cyan)' }}>
+          {incoming}
+        </div>
+      )}
+
+      {/* chip chuyển động — hiệu ứng vào */}
+      {movingChip && (
+        <motion.div
+          key={`mv-${phase}-${runId}`}
+          initial={{ left: DEC_ENTRY_X, opacity: 0 }}
+          animate={{ left: movingLeft, opacity: movingOpacity }}
+          transition={{ duration: phase === 'gate' ? 1.0 : 0.85, times: movingTimes, ease: 'easeInOut' }}
+          style={{ ...DEC_CHIP, borderColor: movingColor, color: movingColor }}
+        >
+          {movingVal}
+        </motion.div>
+      )}
+
+      {/* dấu ✗ khi bị cổng chặn */}
+      {phase === 'gate' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.3 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.55, duration: 0.4, ease: 'backOut' }}
+          style={{
+            position: 'absolute',
+            left: DEC_GATE_X,
+            top: DEC_ROW_Y - 2,
+            transform: 'translate(-50%, -50%)',
+            fontSize: 34,
+            fontWeight: 800,
+            color: 'var(--red)',
+          }}
+        >
+          ✗
+        </motion.div>
+      )}
+
+      {/* nhãn "X bị mất" (phase overwrite) */}
+      {phase === 'overwrite' && held != null && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          style={{
+            position: 'absolute',
+            left: DEC_CELL_X,
+            top: DEC_ROW_Y + 42,
+            transform: 'translateX(-50%)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 18,
+            fontWeight: 700,
+            color: 'var(--red)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {held} bị mất
+        </motion.div>
+      )}
+    </motion.div>
   )
 }

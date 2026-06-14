@@ -43,7 +43,8 @@ function StateTable() {
   const rows: { icon: string; color: string; label: string; code: string }[] = [
     { icon: '●', color: 'var(--fog-500)', label: 'chưa thấy', code: 'Cost[X] == null' },
     { icon: '●', color: 'var(--amber)', label: 'đang mở', code: 'Cost[X] = số tạm' },
-    { icon: '✓', color: 'var(--green)', label: 'đã chốt', code: 'Visited[X] = true' },
+    // "đã chốt" CHƯA gọi tên Visited — để dành cho khoảnh khắc tự phát hiện ra nó
+    { icon: '✓', color: 'var(--green)', label: 'đã chốt', code: 'đóng dấu ✓' },
   ]
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
